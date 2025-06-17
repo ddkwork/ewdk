@@ -16,7 +16,7 @@ jobs:
     steps:
       # 1. 准备环境
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Go
         uses: actions/setup-go@v5
