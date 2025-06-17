@@ -1,54 +1,9 @@
-#name: ci
-#on:
-#  push:
-#    branches:
-#      - master
-#  workflow_dispatch:  # 允许手动触发
-#
-#jobs:
-#  download_vs:
-#    runs-on: windows-latest
-#    steps:
-#      - name: Check out repository
-#        uses: actions/checkout@v4
-#
-#      - name: 下载安装程序
-#        shell: powershell
-#        run: |
-##          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_enterprise.exe" -OutFile vs_enterprise.exe
-#
-#      - name: offline Visual Studio 2022 cleaner
-#        run: |
-##          cmd /c "vs_enterprise.exe --passive  --lang zh-CN --cleaner ewdk  --useLatestInstaller --config .vsconfig "
-#
-#      #      - name: Install winget
-#      #        uses: Cyberboss/install-winget@v1
-#      #
-#      #      - name: 安装7-Zip
-#      #        shell: powershell
-#      #        run: |
-#      #          winget install --id=mcmilk.7zip-zstd -e --accept-package-agreements --accept-source-agreements
-#
-#      - name: Pack cleaner
-#        run: |
-#          cmd /c "7z a ewdk.7z ewdk\*"
-#
-#      - name: Upload packed cleaner
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: ewdk-cleaner-Artifact
-#          path: ewdk.7z
-#
-#
-#
-#
-#
-
-
-
 name: Build EWDK Toolkit on Linux
 
 on:
+  push:
+    branches:
+      - master
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 1'  # 每周一 UTC 时间 0 点运行
@@ -61,12 +16,12 @@ jobs:
     steps:
       # 1. 准备环境
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.25.0-rc.1'
 
       - name: Install dependencies
         run: |
