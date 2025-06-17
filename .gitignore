@@ -1,0 +1,4 @@
+*.cmd
+log.log
+tmp/*
+.idea

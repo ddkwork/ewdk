@@ -1,0 +1,190 @@
+#name: ci
+#on:
+#  push:
+#    branches:
+#      - master
+#  workflow_dispatch:  # 允许手动触发
+#
+#jobs:
+#  download_vs:
+#    runs-on: windows-latest
+#    steps:
+#      - name: Check out repository
+#        uses: actions/checkout@v4
+#
+#      - name: 下载安装程序
+#        shell: powershell
+#        run: |
+##          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_enterprise.exe" -OutFile vs_enterprise.exe
+#
+#      - name: offline Visual Studio 2022 cleaner
+#        run: |
+##          cmd /c "vs_enterprise.exe --passive  --lang zh-CN --cleaner ewdk  --useLatestInstaller --config .vsconfig "
+#
+#      #      - name: Install winget
+#      #        uses: Cyberboss/install-winget@v1
+#      #
+#      #      - name: 安装7-Zip
+#      #        shell: powershell
+#      #        run: |
+#      #          winget install --id=mcmilk.7zip-zstd -e --accept-package-agreements --accept-source-agreements
+#
+#      - name: Pack cleaner
+#        run: |
+#          cmd /c "7z a ewdk.7z ewdk\*"
+#
+#      - name: Upload packed cleaner
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: ewdk-cleaner-Artifact
+#          path: ewdk.7z
+#
+#
+#
+#
+#
+
+
+
+name: Build EWDK Toolkit on Linux
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'  # 每周一 UTC 时间 0 点运行
+
+jobs:
+  build-ewdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      # 1. 准备环境
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd wimtools fuseiso p7zip-full
+          
+          # 创建临时工作目录
+          mkdir -p /tmp/ewdk_workdir
+
+      # 2. 获取 EWDK 下载 URL
+      - name: Get EWDK URL
+        id: get_ewdk_url
+        run: |
+          # 使用 curl 获取重定向链接
+          ISO_URL=$(curl -s -I -o /dev/null -w "%{redirect_url}" "https://aka.ms/ewdk")
+          if [[ "$ISO_URL" != *.iso ]]; then
+            echo "❌ 错误: 无效的 EWDK URL: $ISO_URL"
+            exit 1
+          fi
+          echo "final_url=$ISO_URL" >> $GITHUB_OUTPUT
+
+      # 3. 下载 ISO 到临时目录
+      - name: Download ISO
+        run: |
+          ISO_PATH="/tmp/ewdk_temp.iso"
+          echo "📥 下载 EWDK ISO 到: $ISO_PATH"
+          curl -L -o "$ISO_PATH" "${{ steps.get_ewdk_url.outputs.final_url }}" \
+               --retry 5 --retry-delay 10 --retry-max-time 300
+          
+          # 验证下载完整性 (至少 500MB)
+          FILE_SIZE=$(stat -c%s "$ISO_PATH")
+          if [ "$FILE_SIZE" -lt 500000000 ]; then
+            echo "❌ 下载文件过小: $((FILE_SIZE/1000000)) MB"
+            exit 1
+          fi
+          echo "✔️ ISO 下载完成 ($((FILE_SIZE/1000000)) MB)"
+          echo "ISO_PATH=$ISO_PATH" >> $GITHUB_ENV
+
+      # 4. 挂载 ISO (使用 Linux 虚拟光驱)
+      - name: Mount ISO
+        run: |
+          MOUNT_POINT=$(mktemp -d)
+          sudo mount -o loop,ro "$ISO_PATH" "$MOUNT_POINT"
+          echo "MOUNT_POINT=$MOUNT_POINT" >> $GITHUB_ENV
+          echo "💿 ISO 挂载到: $MOUNT_POINT"
+
+      # 5. 运行 Go 提取程序
+      - name: Run extraction
+        run: |
+          # 清理旧 ewdk 目录
+          if [ -d "$GITHUB_WORKSPACE/ewdk" ]; then
+            echo "🧹 清理存在的 ewdk 目录..."
+            rm -rf "$GITHUB_WORKSPACE/ewdk"
+          fi
+          
+          echo "🚀 运行 Go 提取程序..."
+          go run ./extract_ewdk.go -source "$MOUNT_POINT" -dest "$GITHUB_WORKSPACE/ewdk"
+          
+          # 验证提取结果
+          FILE_COUNT=$(find "$GITHUB_WORKSPACE/ewdk" -type f | wc -l)
+          if [ "$FILE_COUNT" -lt 100 ]; then
+            echo "❌ 提取文件数量过少: $FILE_COUNT"
+            exit 1
+          fi
+          echo "✔️ 提取了 $FILE_COUNT 个文件到 $GITHUB_WORKSPACE/ewdk"
+
+      # 6. 卸载并删除 ISO
+      - name: Unmount and cleanup ISO
+        run: |
+          # 确保卸载
+          sudo umount -f "$MOUNT_POINT" || true
+          sudo rm -rf "$MOUNT_POINT"
+          
+          # 删除 ISO 文件
+          if [ -f "$ISO_PATH" ]; then
+            rm -f "$ISO_PATH"
+            echo "🗑️ 已删除 ISO 文件"
+          fi
+
+      # 7. 压缩为 .tar.zst
+      - name: Compress to .tar.zst
+        run: |
+          # 安装最新 zstd 版本
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          git clone https://github.com/facebook/zstd.git /tmp/zstd
+          (cd /tmp/zstd && make -j$(nproc) && sudo make install)
+          
+          # 压缩 ewdk 目录
+          ARCHIVE_PATH="/tmp/ewdk.tar.zst"
+          echo "📦 压缩 ewdk 目录到 $ARCHIVE_PATH..."
+          
+          # 使用多线程最高压缩级别
+          tar -cf - -C "$GITHUB_WORKSPACE" ewdk | zstd --ultra -22 -T0 -o "$ARCHIVE_PATH"
+          
+          # 验证压缩文件
+          ARCHIVE_SIZE=$(stat -c%s "$ARCHIVE_PATH")
+          echo "✔️ 压缩完成 - 大小: $((ARCHIVE_SIZE/1000000)) MB"
+          echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> $GITHUB_ENV
+
+      # 8. 上传压缩包为 Artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewdk-toolkit-linux
+          path: ${{ env.ARCHIVE_PATH }}
+          retention-days: 7
+          compression-level: 0  # 不进行额外压缩
+
+      # 9. 清理工作区（可选）
+      - name: Cleanup workspace
+        if: ${{ always() }}
+        run: |
+          # 删除压缩包
+          if [ -f "$ARCHIVE_PATH" ]; then
+            rm -f "$ARCHIVE_PATH"
+          fi
+          
+          # 保留 ewdk 目录可选
+          # echo "如需保留 ewdk 目录，请移除此步骤"
+          # rm -rf "$GITHUB_WORKSPACE/ewdk"
