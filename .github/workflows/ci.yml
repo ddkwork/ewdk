@@ -106,13 +106,13 @@ jobs:
           retention-days: 7
           compression-level: 0  # 避免GitHub二次压缩
 
-      - name: 上传log
-        uses: actions/upload-artifact@v4
-        with:
-          name: log.log
-          path: log.log
-          retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
+#      - name: 上传log
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: log.log
+#          path: log.log
+#          retention-days: 7
+#          compression-level: 0  # 避免GitHub二次压缩
 
       - name: 清理资源
         run: |
