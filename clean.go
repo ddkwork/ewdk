@@ -50,6 +50,9 @@ func main() {
 		root = "/mnt/ewdk"
 	}
 	mylog.Success("root: ", root)
+	if !stream.IsDir(root) {
+		mylog.Check("root is not a directory")
+	}
 	//const tmp = "tmp"
 	const tmp = "ewdk"
 	os.RemoveAll(tmp)
