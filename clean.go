@@ -49,6 +49,7 @@ func main() {
 	if stream.IsRunningOnGitHubActions() {
 		root = "/mnt/ewdk"
 	}
+	mylog.Info("root: ", root)
 	//const tmp = "tmp"
 	const tmp = "ewdk"
 	os.RemoveAll(tmp)
