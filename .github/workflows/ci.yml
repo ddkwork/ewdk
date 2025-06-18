@@ -28,7 +28,7 @@ jobs:
 
       - name: 获取并设置EWDK URL
         id: set-url
-        run: go run scripts/get_ewdk_url.go
+        run: sudo go run scripts/get_ewdk_url.go
 
       - name: 下载ISO
         run: |
