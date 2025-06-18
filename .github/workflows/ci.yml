@@ -43,14 +43,14 @@ jobs:
           sudo mount -o loop /tmp/ewdk.iso /mnt/ewdk
 
       - name: 安装Go模块
-        run: go get -u github.com/ddkwork/golibrary
+        run: go mod tidy
 
       - name: 运行提取程序
         run: |
           if [ -d "ewdk" ]; then
             rm -rf ewdk
           fi
-          go run ./extract_ewdk.go
+          go run .
 
       - name: 创建压缩包
         run: |

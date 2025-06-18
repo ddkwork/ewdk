@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/ddkwork/golibrary/std/mylog"
+	"github.com/ddkwork/golibrary/std/stream"
 	"github.com/ddkwork/golibrary/std/stream/net/httpClient"
 	"os"
 	"strings"
@@ -30,24 +32,12 @@ func GetIsoLink() string {
 	iso := c.Response.Header.Get("Location")
 
 	if githubEnv := os.Getenv("GITHUB_ENV"); githubEnv != "" {
-		// 在GitHub Actions中运行 - 写入到GITHUB_ENV文件
-		envFile, err := os.OpenFile(githubEnv, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ 无法打开GITHUB_ENV文件: %v\n", err)
-			os.Exit(1)
-		}
-		defer envFile.Close()
-
-		if _, err := fmt.Fprintf(envFile, "EWDK_ISO_URL=%s\n", iso); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ 写入GITHUB_ENV失败: %v\n", err)
-			os.Exit(1)
-		}
+		g := stream.NewGeneratedFile()
+		g.P()
+		g.P("EWDK_ISO_URL", "=", iso)
+		stream.WriteAppend(githubEnv, g.String())
 	} else {
-		// 本地运行 - 直接设置环境变量
-		if err := os.Setenv("EWDK_ISO_URL", iso); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ 设置环境变量失败: %v\n", err)
-			os.Exit(1)
-		}
+		mylog.Check(os.Setenv("EWDK_ISO_URL", iso))
 	}
 
 	fmt.Print(iso)
