@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+func main() {
+	GetIsoLink()
+}
+
 func GetIsoLink() string {
 	c := httpClient.New().SetDebug(true)
 
