@@ -1,13 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/stream"
 	"github.com/ddkwork/golibrary/std/stream/net/httpClient"
-	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -42,15 +39,13 @@ func GetIsoLink() string {
 		mylog.Trace("env path", githubEnv)
 		mylog.Json("github_env", string(mylog.Check2(os.ReadFile(githubEnv))))
 
-		filepath.Walk(filepath.Dir(githubEnv), func(path string, info fs.FileInfo, err error) error {
-			println(path)
-			return err
-		})
+		//filepath.Walk(filepath.Dir(githubEnv), func(path string, info fs.FileInfo, err error) error {
+		//	println(path)
+		//	return err
+		//})
 
 	} else {
 		mylog.Check(os.Setenv("EWDK_ISO_URL", iso))
 	}
-
-	fmt.Print(iso)
 	return iso
 }
