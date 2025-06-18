@@ -1,5 +1,5 @@
 *.cmd
 log.log
-tmp/*
 .idea
 /bug.log
+dist/

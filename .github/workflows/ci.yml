@@ -62,32 +62,17 @@ jobs:
 
       - name: 安装Go模块
         run: |
-          go env -w GOPROXY=https://goproxy.cn,direct
           go mod tidy
 
       - name: 运行提取程序
         timeout-minutes: 30
         run: |
-          # 清理旧目录
-          if [ -d "ewdk" ]; then
-            rm -rf ewdk
-          fi
-          
-          # 运行提取程序
           go run .
-          
-          # 验证提取结果
-          if [ ! -d "ewdk" ]; then
-            echo "❌ 错误: 提取程序未创建ewdk目录"
-            exit 1
-          fi
-          FILE_COUNT=$(find ewdk -type f | wc -l)
-          echo "✅ 提取完成: $FILE_COUNT 个文件"
 
       - name: 创建压缩包
         run: |
           # 压缩目录 (使用最新版zstd)
-          tar cf - ewdk | zstd --ultra -22 -T0 -o /tmp/ewdk.tar.zst
+          tar cf - dist | zstd --ultra -22 -T0 -o /tmp/ewdk.tar.zst
           
           # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/ewdk.tar.zst)
@@ -105,14 +90,6 @@ jobs:
           path: ${{ env.archive_path }}
           retention-days: 7
           compression-level: 0  # 避免GitHub二次压缩
-
-#      - name: 上传log
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: log.log
-#          path: log.log
-#          retention-days: 7
-#          compression-level: 0  # 避免GitHub二次压缩
 
       - name: 清理资源
         run: |
