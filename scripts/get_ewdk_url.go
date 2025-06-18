@@ -36,6 +36,7 @@ func GetIsoLink() string {
 		g.P()
 		g.P("EWDK_ISO_URL", "=", iso)
 		stream.WriteAppend(githubEnv, g.String())
+		mylog.Json("github_env", mylog.Check2(os.ReadFile(githubEnv)))
 	} else {
 		mylog.Check(os.Setenv("EWDK_ISO_URL", iso))
 	}
