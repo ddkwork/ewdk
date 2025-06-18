@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-	panic(stream.IsRunningOnGitHubActions())
 	GetIsoLink()
 }
 
