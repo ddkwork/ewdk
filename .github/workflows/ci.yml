@@ -49,11 +49,7 @@ jobs:
 
       - name: 运行提取程序
         run: |
-          # 使用Go提取程序处理只读文件系统
-          if [ -d "ewdk" ]; then
-            rm -rf ewdk
-          fi
-          go run . 2>&1  # 显示所有输出信息
+          go run .
 
       - name: 创建压缩包
         run: |
