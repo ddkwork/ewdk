@@ -44,7 +44,7 @@ func Walk() {
 }
 
 func main() {
-	stream.UpdateAllLocalRep()
+	//stream.UpdateAllLocalRep()
 	root := "V:"
 	if stream.IsRunningOnGitHubActions() {
 		root = "/mnt/ewdk"
