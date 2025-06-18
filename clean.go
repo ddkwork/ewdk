@@ -139,8 +139,8 @@ func main() {
 			})
 
 			msvc64 := info{
-				include: filepath.Join(wdkRoot, "include"),
-				lib:     filepath.Join(wdkRoot, "lib"),
+				include: filepath.Join(wdkRoot, "Include"),
+				lib:     filepath.Join(wdkRoot, "Lib"),
 			}
 			//msvc32 := info{
 			//	include: filepath.Join(wdkRoot, "include"),
@@ -158,8 +158,8 @@ func main() {
 			mylog.Success(msvc64.include, fixMsvc64.include)
 			mylog.Success(msvc64.lib, fixMsvc64.lib)
 
-			mylog.Todo("bug")
-			return
+			//mylog.Todo("bug")
+			//return
 
 			stream.CopyDir(msvc64.include, fixMsvc64.include)
 			stream.CopyDir(msvc64.lib, fixMsvc64.lib)
@@ -169,7 +169,7 @@ func main() {
 			return
 			filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
 				mylog.Info(path)
-				//if filepath.Base(path) == "include" {
+				//if filepath.Base(path) == "Include" {
 				//	println(path)
 				//}
 				return err
