@@ -47,10 +47,7 @@ jobs:
 
       - name: 运行提取程序
         run: |
-          if [ -d "ewdk" ]; then
-            rm -rf ewdk
-          fi
-          go run .
+         sudo go run .
 
       - name: 创建压缩包
         run: |
