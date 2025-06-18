@@ -138,30 +138,30 @@ func main() {
 				return err
 			})
 
-			msvc64 := info{
-				include: filepath.Join(wdkRoot, "Include"),
+			wdk64 := info{
+				include: filepath.Join(wdkRoot, "Include"), //linux 对大小写敏感，todo x64盒x86合并了，需要区分
 				lib:     filepath.Join(wdkRoot, "Lib"),
 			}
-			//msvc32 := info{
+			//wdk32 := info{
 			//	include: filepath.Join(wdkRoot, "include"),
 			//	lib:     filepath.Join(wdkRoot, "lib"),
 			//}
 			fixMsvc64 := info{
-				include: fnFixPath(msvc64.include),
-				lib:     fnFixPath(msvc64.lib),
+				include: fnFixPath(wdk64.include),
+				lib:     fnFixPath(wdk64.lib),
 			}
-			//fixMsvc32 := info{
-			//	include: fnFixPath(msvc32.include),
-			//	lib:     fnFixPath(msvc32.lib),
+			//fixWdk32 := info{
+			//	include: fnFixPath(wdk32.include),
+			//	lib:     fnFixPath(wdk32.lib),
 			//}
 
-			mylog.Success(msvc64.include, fixMsvc64.include)
-			mylog.Success(msvc64.lib, fixMsvc64.lib)
+			mylog.Success(wdk64.include, fixMsvc64.include)
+			mylog.Success(wdk64.lib, fixMsvc64.lib)
 
-			stream.CopyDir(msvc64.include, fixMsvc64.include)
-			stream.CopyDir(msvc64.lib, fixMsvc64.lib)
-			//stream.CopyDir(msvc32.include, fixMsvc32.include)
-			//stream.CopyDir(msvc32.lib, fixMsvc32.lib)
+			stream.CopyDir(wdk64.include, fixMsvc64.include)
+			stream.CopyDir(wdk64.lib, fixMsvc64.lib)
+			//stream.CopyDir(wdk32.include, fixWdk32.include)
+			//stream.CopyDir(wdk32.lib, fixWdk32.lib)
 
 			filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
 				mylog.Info(path)
