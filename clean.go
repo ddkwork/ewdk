@@ -128,6 +128,7 @@ func main() {
 		},
 		findWdk: func() {
 			// V:Program Files\Windows Kits\10\Include\10.0.26100.0\km\ntddk.h
+			///mnt/ewdk/Program Files/Windows Kits/10/Include/10.0.26100.0/km/crt
 			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
 			if !stream.IsDir(wdkRoot) {
 				panic("wdkRoot is not a directory")
@@ -166,7 +167,11 @@ func main() {
 			//	include: fnFixPath(msvc32.include),
 			//	lib:     fnFixPath(msvc32.lib),
 			//}
-			return //bug
+			//return //bug
+
+			mylog.Success(msvc64.include, fixMsvc64.include)
+			mylog.Success(msvc64.lib, fixMsvc64.lib)
+			
 			stream.CopyDir(msvc64.include, fixMsvc64.include)
 			stream.CopyDir(msvc64.lib, fixMsvc64.lib)
 			//stream.CopyDir(msvc32.include, fixMsvc32.include)
