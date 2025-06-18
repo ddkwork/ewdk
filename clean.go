@@ -171,13 +171,40 @@ func Walk() Config {
 			cfg.user32Libs = append(cfg.user32Libs, fnFixPath(lib32))
 		},
 		findWdk: func() {
-			// V:Program Files\Windows Kits\10\Include\10.0.26100.0\km\ntddk.h
-			///mnt/ewdk/Program Files/Windows Kits/10/Include/10.0.26100.0/km/crt
 			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
-			//filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
-			//	mylog.Info(path)
-			//	return err
-			//})
+
+			//dist/Program_Files/Windows_Kits/10/Lib/10.0.26100.0/km/x64
+			//dist/Program_Files/Windows_Kits/10/Lib/wdf/kmdf/x64/1.35
+
+			//dist/Program_Files/Windows_Kits/10/Include/wdf/kmdf/1.35
+			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/shared
+			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/km
+			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/km/crt
+
+			kmdfLib := filepath.Join(wdkRoot, "Lib", "wdf", "kmdf", "x64", "1.35")
+			stream.CopyDir(kmdfLib, fnFixPath(kmdfLib))
+			cfg.kernel64Libs = append(cfg.kernel64Libs, fnFixPath(kmdfLib))
+
+			kmLib := filepath.Join(wdkRoot, "Lib", "10.0.26100.0", "km", "x64")
+			stream.CopyDir(kmLib, fnFixPath(kmLib))
+			cfg.kernel64Libs = append(cfg.kernel64Libs, fnFixPath(kmLib))
+
+			kmdfInclude := filepath.Join(wdkRoot, "Include", "wdf", "kmdf", "1.35")
+			stream.CopyDir(kmdfInclude, fnFixPath(kmdfInclude))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(kmdfInclude))
+
+			sharedInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "shared")
+			stream.CopyDir(sharedInclude, fnFixPath(sharedInclude))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(sharedInclude))
+
+			kmInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km")
+			stream.CopyDir(kmInclude, fnFixPath(kmInclude))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(kmInclude))
+
+			crtInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km", "crt")
+			//stream.CopyDir(crtInclude, fnFixPath(crtInclude))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(crtInclude))
+
 			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
 				if strings.Contains(path, "arm") {
 					return nil
@@ -192,26 +219,7 @@ func Walk() Config {
 				return err
 			})
 
-			include := filepath.Join(wdkRoot, "Include") //linux 对大小写敏感，to
-			lib := filepath.Join(wdkRoot, "Lib")
-
-			stream.CopyDir(include, fnFixPath(include))
-			stream.CopyDir(lib, fnFixPath(lib))
-
-			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(include)) //todo bug
-			cfg.kernel64Libs = append(cfg.kernel64Libs, fnFixPath(lib))
-			cfg.kernel32Libs = append(cfg.kernel32Libs, fnFixPath(lib))
-
 			mylog.Struct(cfg)
-			return
-
-			filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
-				//mylog.Info(path)
-				//if filepath.Base(path) == "Include" {
-				//	println(path)
-				//}
-				return err
-			})
 		},
 	}
 	s.findDiaSdk()
