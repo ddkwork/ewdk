@@ -11,7 +11,7 @@ func main() {
 }
 
 func GetIsoLink() string {
-	c := httpClient.New().SetDebug(true)
+	c := httpClient.New() //.SetDebug(true)
 
 	b := c.Get("https://learn.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2022").Request().Buffer
 	latestUrl := ""
