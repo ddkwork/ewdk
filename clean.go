@@ -58,6 +58,10 @@ func main() {
 	os.RemoveAll(tmp)
 	BuildTools := filepath.Join(root, "Program Files", "Microsoft Visual Studio", "2022", "BuildTools")
 
+	if !stream.IsDir(BuildTools) {
+		panic("BuildTools is not a directory")
+	}
+
 	fnFixPath := func(path string) string {
 		fixPath := strings.TrimPrefix(path, root)
 		fixPath = strings.ReplaceAll(fixPath, " ", "_")
@@ -84,6 +88,9 @@ func main() {
 		},
 		findMsvcBuildTools: func() {
 			msvc := filepath.Join(BuildTools, "VC", "Tools", "MSVC")
+			if !stream.IsDir(msvc) {
+				panic("msvc is not a directory")
+			}
 			filepath.Walk(msvc, func(path string, info fs.FileInfo, err error) error {
 				if filepath.Base(path) == "bin" {
 					msvc = filepath.Dir(path)
@@ -122,7 +129,9 @@ func main() {
 		findWdk: func() {
 			// V:Program Files\Windows Kits\10\Include\10.0.26100.0\km\ntddk.h
 			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
-
+			if !stream.IsDir(wdkRoot) {
+				panic("wdkRoot is not a directory")
+			}
 			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
 				if strings.Contains(path, "arm") {
 					return nil
