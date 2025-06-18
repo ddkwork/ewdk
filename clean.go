@@ -50,17 +50,10 @@ func main() {
 		root = "/mnt/ewdk"
 	}
 	mylog.Success("root: ", root)
-	if !stream.IsDir(root) {
-		mylog.Check("root is not a directory")
-	}
 	//const tmp = "tmp"
 	const tmp = "ewdk"
 	os.RemoveAll(tmp)
 	BuildTools := filepath.Join(root, "Program Files", "Microsoft Visual Studio", "2022", "BuildTools")
-
-	if !stream.IsDir(BuildTools) {
-		panic("BuildTools is not a directory")
-	}
 
 	fnFixPath := func(path string) string {
 		fixPath := strings.TrimPrefix(path, root)
@@ -88,9 +81,6 @@ func main() {
 		},
 		findMsvcBuildTools: func() {
 			msvc := filepath.Join(BuildTools, "VC", "Tools", "MSVC")
-			if !stream.IsDir(msvc) {
-				panic("msvc is not a directory")
-			}
 			filepath.Walk(msvc, func(path string, info fs.FileInfo, err error) error {
 				if filepath.Base(path) == "bin" {
 					msvc = filepath.Dir(path)
@@ -130,13 +120,10 @@ func main() {
 			// V:Program Files\Windows Kits\10\Include\10.0.26100.0\km\ntddk.h
 			///mnt/ewdk/Program Files/Windows Kits/10/Include/10.0.26100.0/km/crt
 			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
-			if !stream.IsDir(wdkRoot) {
-				panic("wdkRoot is not a directory")
-			}
-			filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
-				mylog.Info(path)
-				return err
-			})
+			//filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
+			//	mylog.Info(path)
+			//	return err
+			//})
 			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
 				if strings.Contains(path, "arm") {
 					return nil
@@ -167,10 +154,12 @@ func main() {
 			//	include: fnFixPath(msvc32.include),
 			//	lib:     fnFixPath(msvc32.lib),
 			//}
-			return //bug
 
 			mylog.Success(msvc64.include, fixMsvc64.include)
 			mylog.Success(msvc64.lib, fixMsvc64.lib)
+
+			mylog.Todo("bug")
+			return
 
 			stream.CopyDir(msvc64.include, fixMsvc64.include)
 			stream.CopyDir(msvc64.lib, fixMsvc64.lib)
