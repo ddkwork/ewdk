@@ -27,27 +27,68 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y zstd wimtools fuseiso p7zip-full
-          
-          # 创建临时工作目录
           mkdir -p /tmp/ewdk_workdir
 
-      # 2. 获取 EWDK 下载 URL
+      # 2. 使用 Go 脚本获取正确的 EWDK URL
       - name: Get EWDK URL
         id: get_ewdk_url
         run: |
-          # 使用 curl 获取重定向链接
-          ISO_URL=$(curl -s -I -o /dev/null -w "%{redirect_url}" "https://aka.ms/ewdk")
-          if [[ "$ISO_URL" != *.iso ]]; then
-            echo "❌ 错误: 无效的 EWDK URL: $ISO_URL"
-            exit 1
-          fi
-          echo "final_url=$ISO_URL" >> $GITHUB_OUTPUT
+          cat <<EOF > extract_url.go
+          package main
+
+          import (
+              "fmt"
+              "net/http"
+              "strings"
+              "os"
+          )
+
+          func main() {
+              resp, err := http.Get("https://learn.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2022")
+              if err != nil {
+                  fmt.Fprintf(os.Stderr, "❌ HTTP请求失败: %v\n", err)
+                  os.Exit(1)
+              }
+              defer resp.Body.Close()
+
+              buf := new(strings.Builder)
+              buf.ReadFrom(resp.Body)
+
+              var latestEWDK string
+              for _, s := range strings.Split(buf.String(), "\n") {
+                  if strings.Contains(s, "Accept license terms") {
+                      if _, after, found := strings.Cut(s, `href="`); found {
+                          if before, _, found := strings.Cut(after, `"`); found {
+                              latestEWDK = before
+                              break
+                          }
+                      }
+                  }
+              }
+
+              if latestEWDK == "" {
+                  fmt.Fprintln(os.Stderr, "❌ 错误: 无法从页面解析下载URL")
+                  os.Exit(1)
+              }
+
+              fmt.Println(latestEWDK)
+          }
+          EOF
+
+          echo "🛠️ 编译并运行 URL 提取脚本..."
+          go build -o extract_url extract_url.go
+          URL=$(./extract_url)
+          echo "提取到的下载URL: $URL"
+          echo "final_url=$URL" >> $GITHUB_OUTPUT
+          rm -f extract_url extract_url.go
 
       # 3. 下载 ISO 到临时目录
       - name: Download ISO
         run: |
           ISO_PATH="/tmp/ewdk_temp.iso"
           echo "📥 下载 EWDK ISO 到: $ISO_PATH"
+          echo "使用URL: ${{ steps.get_ewdk_url.outputs.final_url }}"
+          
           curl -L -o "$ISO_PATH" "${{ steps.get_ewdk_url.outputs.final_url }}" \
                --retry 5 --retry-delay 10 --retry-max-time 300
           
@@ -60,6 +101,7 @@ jobs:
           echo "✔️ ISO 下载完成 ($((FILE_SIZE/1000000)) MB)"
           echo "ISO_PATH=$ISO_PATH" >> $GITHUB_ENV
 
+      # ... 以下步骤保持不变 ...
       # 4. 挂载 ISO (使用 Linux 虚拟光驱)
       - name: Mount ISO
         run: |
@@ -139,7 +181,3 @@ jobs:
           if [ -f "$ARCHIVE_PATH" ]; then
             rm -f "$ARCHIVE_PATH"
           fi
-          
-          # 保留 ewdk 目录可选
-          # echo "如需保留 ewdk 目录，请移除此步骤"
-          # rm -rf "$GITHUB_WORKSPACE/ewdk"
