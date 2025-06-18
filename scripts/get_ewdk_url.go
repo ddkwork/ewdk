@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/stream"
 	"github.com/ddkwork/golibrary/std/stream/net/httpClient"
@@ -8,7 +9,22 @@ import (
 	"strings"
 )
 
+func detectAction() {
+	fmt.Println("GITHUB_ACTIONS =", os.Getenv("GITHUB_ACTIONS"))
+	fmt.Println("GITHUB_WORKSPACE =", os.Getenv("GITHUB_WORKSPACE"))
+	fmt.Println("GITHUB_RUN_ID =", os.Getenv("GITHUB_RUN_ID"))
+
+	// 检查GitHub运行器目录是否存在
+	if _, err := os.Stat("/opt/hostedtoolcache"); err == nil {
+		fmt.Println("✅ Detected GitHub Actions runner directory")
+	} else {
+		fmt.Println("❌ GitHub Actions runner directory not found")
+	}
+}
+
 func main() {
+	detectAction()
+	return
 	GetIsoLink()
 }
 
