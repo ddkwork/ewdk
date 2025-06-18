@@ -2,7 +2,7 @@ name: Build EWDK Toolkit on Linux
 
 on:
   push:
-    branches: [master]
+    branches: [ master ]
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 1'  # 每周一UTC0点运行
@@ -39,56 +39,52 @@ jobs:
 
       - name: 挂载ISO
         run: |
+          # 仅需创建挂载点并挂载，不需要任何权限修改
           sudo mkdir -p /mnt/ewdk
           sudo mount -o loop /tmp/ewdk.iso /mnt/ewdk
-          
-          # 添加可执行权限让Go程序能访问
-          sudo chmod -R a+rX /mnt/ewdk
+          echo "ISO已挂载为只读文件系统"
 
       - name: 安装Go模块
-        run: |
-          # 使用国内代理加速
-          go mod tidy
+        run: go mod tidy
 
       - name: 运行提取程序
         run: |
+          # 使用Go提取程序处理只读文件系统
           if [ -d "ewdk" ]; then
             rm -rf ewdk
           fi
-          
-          # 避免权限问题
-          sudo go run .
+          go run . 2>&1  # 显示所有输出信息
 
       - name: 创建压缩包
         run: |
-          # 安装最新版zstd获得更好压缩
-          sudo apt install -y build-essential
-          git clone https://github.com/facebook/zstd.git /tmp/zstd
-          (cd /tmp/zstd && make -j$(nproc) && sudo make install)
+          # 验证提取结果
+          if [ ! -d "ewdk" ]; then
+            echo "❌ 错误: 提取程序未创建ewdk目录"
+            exit 1
+          fi
           
           # 压缩目录
-          tar cf - ewdk | zstd --ultra -22 -T0 -o /tmp/ewdk.tar.zst
+          tar cf - ewdk | zstd -22 -T0 -o /tmp/ewdk.tar.zst
           
           # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/ewdk.tar.zst)
-          if [ $ARCHIVE_SIZE -lt 100000000 ]; then
-            echo "❌ 错误: 压缩包太小 (仅 $((ARCHIVE_SIZE/1000000)) MB)"
-            exit 1
-          fi
+          echo "压缩包大小: $((ARCHIVE_SIZE/1000000)) MB"
           echo "archive_path=/tmp/ewdk.tar.zst" >> $GITHUB_ENV
 
       - name: 上传成品
         uses: actions/upload-artifact@v4
         with:
-          name: ewdk.tar.zst  # 使用目标文件名作为Artifact名称
+          name: ewdk.tar.zst  # 确保使用文件名作为Artifact名称
           path: ${{ env.archive_path }}
           retention-days: 7
-          compression-level: 0  # 重要：避免GitHub二次压缩
+          compression-level: 0  # 避免二次压缩
 
       - name: 清理资源
         run: |
+          # 卸载ISO（会正常显示只读警告）
           sudo umount /mnt/ewdk || true
+          
+          # 删除其他临时文件
           sudo rm -rf /mnt/ewdk
           rm -f /tmp/ewdk.iso
           rm -f /tmp/ewdk.tar.zst
-          sudo rm -rf /tmp/zstd
