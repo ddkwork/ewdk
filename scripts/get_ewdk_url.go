@@ -23,7 +23,8 @@ func detectAction() {
 }
 
 func main() {
-	detectAction()
+	//detectAction()
+	panic(stream.IsRunningOnGitHubActions())
 	return
 	GetIsoLink()
 }
