@@ -43,14 +43,10 @@ func Walk() {
 
 }
 
-func isRunningOnGitHubActions() bool {
-	return os.Getenv("GITHUB_ACTIONS") == "true"
-}
-
 func main() {
-	//stream.UpdateAllLocalRep()
+	stream.UpdateAllLocalRep()
 	root := "V:"
-	if isRunningOnGitHubActions() {
+	if stream.IsRunningOnGitHubActions() {
 		root = "/mnt/ewdk"
 	}
 	//const tmp = "tmp"
