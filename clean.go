@@ -134,7 +134,7 @@ func main() {
 				panic("wdkRoot is not a directory")
 			}
 			filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
-				println(path)
+				mylog.Info(path)
 				return err
 			})
 			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
@@ -167,11 +167,11 @@ func main() {
 			//	include: fnFixPath(msvc32.include),
 			//	lib:     fnFixPath(msvc32.lib),
 			//}
-			//return //bug
+			return //bug
 
 			mylog.Success(msvc64.include, fixMsvc64.include)
 			mylog.Success(msvc64.lib, fixMsvc64.lib)
-			
+
 			stream.CopyDir(msvc64.include, fixMsvc64.include)
 			stream.CopyDir(msvc64.lib, fixMsvc64.lib)
 			//stream.CopyDir(msvc32.include, fixMsvc32.include)
