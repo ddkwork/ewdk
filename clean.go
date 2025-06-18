@@ -65,11 +65,13 @@ func main() {
 	s := setup{
 		findDiaSdk: func() {
 			filepath.Walk(filepath.Join(BuildTools, "DIA SDK"), func(path string, info fs.FileInfo, err error) error {
-				switch {
-				case info.IsDir():
+				if strings.Contains(path, "arm") {
 					return nil
-				case strings.Contains(path, "arm"):
-					return nil
+				}
+				if info != nil {
+					if info.IsDir() {
+						return nil
+					}
 				}
 				fixPath := fnFixPath(path)
 				stream.CopyFile(path, fixPath)
@@ -118,11 +120,13 @@ func main() {
 			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
 
 			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
-				switch {
-				case info.IsDir():
+				if strings.Contains(path, "arm") {
 					return nil
-				case strings.Contains(path, "arm"):
-					return nil
+				}
+				if info != nil {
+					if info.IsDir() {
+						return nil
+					}
 				}
 				fixPath := fnFixPath(path)
 				stream.CopyFile(path, fixPath)
