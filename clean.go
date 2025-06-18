@@ -132,6 +132,10 @@ func main() {
 			if !stream.IsDir(wdkRoot) {
 				panic("wdkRoot is not a directory")
 			}
+			filepath.Walk(wdkRoot, func(path string, info fs.FileInfo, err error) error {
+				println(path)
+				return err
+			})
 			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
 				if strings.Contains(path, "arm") {
 					return nil
