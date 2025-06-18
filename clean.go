@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/stream"
-	"github.com/ddkwork/golibrary/std/stream/net/httpClient"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -44,29 +43,16 @@ func Walk() {
 
 }
 
-func getIsoLink() {
-	b := httpClient.New().SetDebug(true).Get().Url("https://learn.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2022").Request().Buffer
-	//latestEWDK := "https://download.microsoft.com/download/65cf0837-67ba-4070-9081-dea2b75be528/iso_EWDK/EWDK_ge_release_svc_prod3_26100_250523-0801.iso"
-	latestEWDK := ""
-	for s := range strings.Lines(b.String()) {
-		if strings.Contains(s, "Accept license terms") {
-			before, after, found := strings.Cut(s, `" data-linktype`)
-			if found {
-				before, after, found = strings.Cut(before, `href="`)
-				latestEWDK = after
-				break
-			}
-		}
-	}
-
-	println(latestEWDK)
+func isRunningOnGitHubActions() bool {
+	return os.Getenv("GITHUB_ACTIONS") == "true"
 }
 
 func main() {
 	//stream.UpdateAllLocalRep()
-	//https://go.microsoft.com/fwlink/?linkid=2324618
-	//https://download.microsoft.com/download/65cf0837-67ba-4070-9081-dea2b75be528/iso_EWDK/EWDK_ge_release_svc_prod3_26100_250523-0801.iso
 	root := "V:"
+	if isRunningOnGitHubActions() {
+		root = "/mnt/ewdk"
+	}
 	//const tmp = "tmp"
 	const tmp = "ewdk"
 	os.RemoveAll(tmp)

@@ -2,11 +2,10 @@ name: Build EWDK Toolkit on Linux
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'  # 每周一 UTC 时间 0 点运行
+    - cron: '0 0 * * 1'  # 每周一UTC0点运行
 
 jobs:
   build-ewdk:
@@ -14,170 +13,62 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      # 1. 准备环境
-      - name: Checkout repository
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Setup Go
+      - name: 设置Go环境
         uses: actions/setup-go@v5
         with:
           go-version: '1.25.0-rc.1'
 
-      - name: Install dependencies
+      - name: 安装基础依赖
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zstd wimtools fuseiso p7zip-full
-          mkdir -p /tmp/ewdk_workdir
+          sudo apt update
+          sudo apt install -y zstd fuseiso p7zip-full
 
-      # 2. 使用 Go 脚本获取正确的 EWDK URL
-      - name: Get EWDK URL
-        id: get_ewdk_url
+      - name: 获取EWDK URL
+        id: get-url
         run: |
-          cat <<EOF > extract_url.go
-          package main
+          URL=$(go run scripts/get_ewdk_url.go)
+          echo "✅ 下载URL: $URL"
+          echo "url=$URL" >> $GITHUB_OUTPUT
 
-          import (
-              "fmt"
-              "net/http"
-              "strings"
-              "os"
-          )
-
-          func main() {
-              resp, err := http.Get("https://learn.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2022")
-              if err != nil {
-                  fmt.Fprintf(os.Stderr, "❌ HTTP请求失败: %v\n", err)
-                  os.Exit(1)
-              }
-              defer resp.Body.Close()
-
-              buf := new(strings.Builder)
-              buf.ReadFrom(resp.Body)
-
-              var latestEWDK string
-              for _, s := range strings.Split(buf.String(), "\n") {
-                  if strings.Contains(s, "Accept license terms") {
-                      if _, after, found := strings.Cut(s, `href="`); found {
-                          if before, _, found := strings.Cut(after, `"`); found {
-                              latestEWDK = before
-                              break
-                          }
-                      }
-                  }
-              }
-
-              if latestEWDK == "" {
-                  fmt.Fprintln(os.Stderr, "❌ 错误: 无法从页面解析下载URL")
-                  os.Exit(1)
-              }
-
-              fmt.Println(latestEWDK)
-          }
-          EOF
-
-          echo "🛠️ 编译并运行 URL 提取脚本..."
-          go build -o extract_url extract_url.go
-          URL=$(./extract_url)
-          echo "提取到的下载URL: $URL"
-          echo "final_url=$URL" >> $GITHUB_OUTPUT
-          rm -f extract_url extract_url.go
-
-      # 3. 下载 ISO 到临时目录
-      - name: Download ISO
+      - name: 下载ISO
         run: |
-          ISO_PATH="/tmp/ewdk_temp.iso"
-          echo "📥 下载 EWDK ISO 到: $ISO_PATH"
-          echo "使用URL: ${{ steps.get_ewdk_url.outputs.final_url }}"
-          
-          curl -L -o "$ISO_PATH" "${{ steps.get_ewdk_url.outputs.final_url }}" \
-               --retry 5 --retry-delay 10 --retry-max-time 300
-          
-          # 验证下载完整性 (至少 500MB)
-          FILE_SIZE=$(stat -c%s "$ISO_PATH")
-          if [ "$FILE_SIZE" -lt 500000000 ]; then
-            echo "❌ 下载文件过小: $((FILE_SIZE/1000000)) MB"
-            exit 1
+          curl -L -o /tmp/ewdk.iso "${{ steps.get-url.outputs.url }}" \
+            --retry 5 --retry-delay 3
+          echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
+
+      - name: 挂载ISO
+        run: |
+          sudo mkdir -p /mnt/ewdk
+          sudo mount -o loop /tmp/ewdk.iso /mnt/ewdk
+
+      - name: 安装Go模块
+        run: go get -u github.com/ddkwork/golibrary
+
+      - name: 运行提取程序
+        run: |
+          if [ -d "ewdk" ]; then
+            rm -rf ewdk
           fi
-          echo "✔️ ISO 下载完成 ($((FILE_SIZE/1000000)) MB)"
-          echo "ISO_PATH=$ISO_PATH" >> $GITHUB_ENV
+          go run ./extract_ewdk.go
 
-      # ... 以下步骤保持不变 ...
-      # 4. 挂载 ISO (使用 Linux 虚拟光驱)
-      - name: Mount ISO
+      - name: 创建压缩包
         run: |
-          MOUNT_POINT=$(mktemp -d)
-          sudo mount -o loop,ro "$ISO_PATH" "$MOUNT_POINT"
-          echo "MOUNT_POINT=$MOUNT_POINT" >> $GITHUB_ENV
-          echo "💿 ISO 挂载到: $MOUNT_POINT"
+          tar cf - ewdk | zstd -22 -T0 -o /tmp/ewdk.tar.zst
+          echo "archive_path=/tmp/ewdk.tar.zst" >> $GITHUB_ENV
 
-      # 5. 运行 Go 提取程序
-      - name: Run extraction
-        run: |
-          # 清理旧 ewdk 目录
-          if [ -d "$GITHUB_WORKSPACE/ewdk" ]; then
-            echo "🧹 清理存在的 ewdk 目录..."
-            rm -rf "$GITHUB_WORKSPACE/ewdk"
-          fi
-          
-          echo "🚀 运行 Go 提取程序..."
-          go run ./extract_ewdk.go -source "$MOUNT_POINT" -dest "$GITHUB_WORKSPACE/ewdk"
-          
-          # 验证提取结果
-          FILE_COUNT=$(find "$GITHUB_WORKSPACE/ewdk" -type f | wc -l)
-          if [ "$FILE_COUNT" -lt 100 ]; then
-            echo "❌ 提取文件数量过少: $FILE_COUNT"
-            exit 1
-          fi
-          echo "✔️ 提取了 $FILE_COUNT 个文件到 $GITHUB_WORKSPACE/ewdk"
-
-      # 6. 卸载并删除 ISO
-      - name: Unmount and cleanup ISO
-        run: |
-          # 确保卸载
-          sudo umount -f "$MOUNT_POINT" || true
-          sudo rm -rf "$MOUNT_POINT"
-          
-          # 删除 ISO 文件
-          if [ -f "$ISO_PATH" ]; then
-            rm -f "$ISO_PATH"
-            echo "🗑️ 已删除 ISO 文件"
-          fi
-
-      # 7. 压缩为 .tar.zst
-      - name: Compress to .tar.zst
-        run: |
-          # 安装最新 zstd 版本
-          sudo apt-get update
-          sudo apt-get install -y build-essential
-          git clone https://github.com/facebook/zstd.git /tmp/zstd
-          (cd /tmp/zstd && make -j$(nproc) && sudo make install)
-          
-          # 压缩 ewdk 目录
-          ARCHIVE_PATH="/tmp/ewdk.tar.zst"
-          echo "📦 压缩 ewdk 目录到 $ARCHIVE_PATH..."
-          
-          # 使用多线程最高压缩级别
-          tar -cf - -C "$GITHUB_WORKSPACE" ewdk | zstd --ultra -22 -T0 -o "$ARCHIVE_PATH"
-          
-          # 验证压缩文件
-          ARCHIVE_SIZE=$(stat -c%s "$ARCHIVE_PATH")
-          echo "✔️ 压缩完成 - 大小: $((ARCHIVE_SIZE/1000000)) MB"
-          echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> $GITHUB_ENV
-
-      # 8. 上传压缩包为 Artifact
-      - name: Upload Artifact
+      - name: 上传成品
         uses: actions/upload-artifact@v4
         with:
           name: ewdk-toolkit-linux
-          path: ${{ env.ARCHIVE_PATH }}
+          path: ${{ env.archive_path }}
           retention-days: 7
-          compression-level: 0  # 不进行额外压缩
 
-      # 9. 清理工作区（可选）
-      - name: Cleanup workspace
-        if: ${{ always() }}
+      - name: 清理资源
         run: |
-          # 删除压缩包
-          if [ -f "$ARCHIVE_PATH" ]; then
-            rm -f "$ARCHIVE_PATH"
-          fi
+          sudo umount /mnt/ewdk || true
+          sudo rm -rf /mnt/ewdk
+          rm -f /tmp/ewdk.iso
+          rm -f /tmp/ewdk.tar.zst
