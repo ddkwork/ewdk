@@ -25,7 +25,6 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y zstd fuseiso p7zip-full
-          go install github.com/imroc/req/v3@latest
 
       - name: 获取并设置EWDK URL
         id: set-url
