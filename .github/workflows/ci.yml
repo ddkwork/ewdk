@@ -25,17 +25,16 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y zstd fuseiso p7zip-full
+          go install github.com/imroc/req/v3@latest
 
-      - name: 获取EWDK URL
-        id: get-url
-        run: |
-          URL=$(go run scripts/get_ewdk_url.go)
-          echo "✅ 下载URL: $URL"
-          echo "url=$URL" >> $GITHUB_OUTPUT
+      - name: 获取并设置EWDK URL
+        id: set-url
+        run: go run scripts/get_ewdk_url.go
 
       - name: 下载ISO
         run: |
-          curl -L -o /tmp/ewdk.iso "${{ steps.get-url.outputs.url }}" \
+          echo "✅ 下载URL: ${{ env.EWDK_ISO_URL }}"
+          curl -L -o /tmp/ewdk.iso "${{ env.EWDK_ISO_URL }}" \
             --retry 5 --retry-delay 3
           echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
 
