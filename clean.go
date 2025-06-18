@@ -162,6 +162,7 @@ func main() {
 			//	include: fnFixPath(msvc32.include),
 			//	lib:     fnFixPath(msvc32.lib),
 			//}
+			return //bug
 			stream.CopyDir(msvc64.include, fixMsvc64.include)
 			stream.CopyDir(msvc64.lib, fixMsvc64.lib)
 			//stream.CopyDir(msvc32.include, fixMsvc32.include)
