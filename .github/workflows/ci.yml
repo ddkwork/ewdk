@@ -58,7 +58,6 @@ jobs:
           --summary-interval=1 \
           --check-certificate=false  # 避免SSL问题
           
-           #            --log=/tmp/aria2.log \
           # 验证下载文件
           FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
           if [ $FILE_SIZE -lt 500000000 ]; then
@@ -146,5 +145,4 @@ jobs:
           rm -f /tmp/wdk.tar.zst
           rm -f /tmp/sdk.tar.zst
           sudo rm -rf /tmp/zstd
-          #          sudo rm -rf /tmp/aria2.log
           echo "✅ 资源清理完成"
