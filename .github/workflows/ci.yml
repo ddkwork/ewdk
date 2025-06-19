@@ -43,17 +43,18 @@ jobs:
         run: |
           echo "✅ 下载URL: ${{ env.EWDK_ISO_URL }}"
           
-          # 火力全开极速下载配置
+          # 修复连接数限制问题，同时保持高速下载
           aria2c \
-            -x 64 -s 32 -k 4M \
+            -x 16 \  # 最大允许值
+            -s 64 \  # 增加分片数量
+            -k 4M \  # 大分片减少开销
+            -j 16 \  # 最大并行任务数
             -c "${{ env.EWDK_ISO_URL }}" \
             -d /tmp -o ewdk.iso \
             --file-allocation=prealloc \
             --retry-wait=1 \
             --max-tries=3 \
-            --max-connection-per-server=32 \
             --min-split-size=10M \
-            --split=64 \
             --log=/tmp/aria2.log \
             --summary-interval=1
           
