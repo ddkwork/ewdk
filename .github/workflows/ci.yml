@@ -5,12 +5,12 @@ on:
     branches: [ master ]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * 1'  # 每周一UTC0点运行
 
 jobs:
   build-ewdk:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 120  # 增加超时时间
 
     steps:
       - name: 检出代码
@@ -24,23 +24,17 @@ jobs:
       - name: 安装基础依赖
         run: |
           sudo apt update
-          sudo apt install -y zstd fuseiso p7zip-full git build-essential aria2
-          
-          # 智能检查ZSTD版本
-          ZSTD_VERSION=$(zstd --version | head -1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
-          echo "ℹ️ 系统 ZSTD 版本: $ZSTD_VERSION"
-          
-          # 仅当版本低于1.4.2时才安装新版
-          if [[ "$(echo $ZSTD_VERSION | sed 's/v//;s/\.//g')" -lt "10402" ]]; then
-            echo "🔄 安装新版 ZSTD（当前版本较低）"
-            git clone https://github.com/facebook/zstd.git /tmp/zstd
-            cd /tmp/zstd
-            make -j$(nproc)
-            sudo make install
-            sudo ldconfig
-          else
-            echo "✅ 系统 ZSTD 版本足够新，跳过编译安装"
-          fi
+#          sudo apt install -y zstd fuseiso p7zip-full git build-essential aria2
+          sudo apt install -y  aria2
+
+      - name: 安装最新版 zstd
+        run: |
+          # 安装最新版 zstd 支持高压缩级别
+          git clone https://github.com/facebook/zstd.git /tmp/zstd
+          cd /tmp/zstd
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig  # 更新共享库缓存
 
       - name: 获取并设置EWDK URL
         id: set-url
@@ -103,16 +97,10 @@ jobs:
 
       - name: 创建wdk压缩包
         run: |
-          # 使用智能选择的压缩级别
-          if zstd -22 -T0 -h >/dev/null 2>&1; then
-            COMPRESS_LEVEL="--ultra -22"
-          else
-            COMPRESS_LEVEL="-19"
-          fi
-          echo "ℹ️ 使用压缩级别: $COMPRESS_LEVEL"
+          # 压缩目录 (使用最新版zstd)
+          tar cf - dist/wdk | zstd --ultra -22 -T0 -o /tmp/wdk.tar.zst
           
-          tar cf - dist/wdk | zstd $COMPRESS_LEVEL -T0 -o /tmp/wdk.tar.zst
-          
+          # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/wdk.tar.zst)
           echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
           echo "wdk_path=/tmp/wdk.tar.zst" >> $GITHUB_ENV
@@ -123,20 +111,14 @@ jobs:
           name: wdk.tar.zst
           path: ${{ env.wdk_path }}
           retention-days: 7
-          compression-level: 0
+          compression-level: 0  # 避免GitHub二次压缩
 
       - name: 创建sdk压缩包
         run: |
-          # 使用智能选择的压缩级别
-          if zstd -22 -T0 -h >/dev/null 2>&1; then
-            COMPRESS_LEVEL="--ultra -22"
-          else
-            COMPRESS_LEVEL="-19"
-          fi
-          echo "ℹ️ 使用压缩级别: $COMPRESS_LEVEL"
+          # 压缩目录 (使用最新版zstd)
+          tar cf - dist/sdk | zstd --ultra -22 -T0 -o /tmp/sdk.tar.zst
           
-          tar cf - dist/sdk | zstd $COMPRESS_LEVEL -T0 -o /tmp/sdk.tar.zst
-          
+          # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/sdk.tar.zst)
           if [ $ARCHIVE_SIZE -lt 100000000 ]; then
             echo "❌ 错误: 压缩包太小 (仅 $((ARCHIVE_SIZE/1000000)) MB)"
@@ -151,14 +133,19 @@ jobs:
           name: sdk.tar.zst
           path: ${{ env.sdk_path }}
           retention-days: 7
-          compression-level: 0
+          compression-level: 0  # 避免GitHub二次压缩
+
 
       - name: 清理资源
         run: |
+          # 卸载ISO
           sudo umount /mnt/ewdk || true
+          
+          # 删除临时文件
           sudo rm -rf /mnt/ewdk
           rm -f /tmp/ewdk.iso
           rm -f /tmp/wdk.tar.zst
           rm -f /tmp/sdk.tar.zst
           sudo rm -rf /tmp/zstd
-          rm -f /tmp/aria2.log
+          sudo rm -rf /tmp/aria2.log
+          echo "✅ 资源清理完成"
