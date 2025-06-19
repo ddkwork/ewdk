@@ -49,7 +49,6 @@ jobs:
           # 安全下载命令
           aria2c \
             -x 16 -s 8 -k 1M \
-            -j 16 \
             -c "$CLEAN_URL" \
             -d /tmp -o ewdk.iso \
             --file-allocation=falloc \
