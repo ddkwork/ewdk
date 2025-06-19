@@ -54,9 +54,6 @@ jobs:
             --file-allocation=falloc \
             --retry-wait=1 \
             --max-tries=3 \
-            --min-split-size=10M \
-            --log=/tmp/aria2.log \
-            --summary-interval=1 \
             --check-certificate=false  # 避免SSL问题
           
           # 验证下载文件
