@@ -83,11 +83,10 @@ func Walk() Config {
 		path = filepath.ToSlash(path)
 		println("origin path: ", path)
 		fixPath := strings.TrimPrefix(path, root)
-		println("fix path trimprefix: ", fixPath)
 		//fixPath = strings.TrimPrefix(fixPath, "Program Files\\Microsoft Visual Studio\\2022")
 		fixPath = strings.TrimPrefix(fixPath, filepath.ToSlash("/Program Files/Microsoft Visual Studio/2022"))
 		//fixPath = strings.ReplaceAll(fixPath, "VC\\Tools\\MSVC\\14.41.34120", "")
-		fixPath = strings.ReplaceAll(fixPath, filepath.ToSlash("VC\\Tools\\MSVC\\14.41.34120"), "")
+		fixPath = strings.ReplaceAll(fixPath, filepath.ToSlash("/VC\\Tools\\MSVC\\14.41.34120"), "")
 		fixPath = strings.ReplaceAll(fixPath, "BuildTools", "sdk")
 
 		fixPath = strings.ReplaceAll(fixPath, " ", "_")
