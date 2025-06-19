@@ -2,13 +2,14 @@ package main
 
 import (
 	_ "embed"
-	"github.com/ddkwork/golibrary/std/mylog"
-	"github.com/ddkwork/golibrary/std/stream"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/ddkwork/golibrary/std/mylog"
+	"github.com/ddkwork/golibrary/std/stream"
 )
 
 type (
@@ -78,6 +79,7 @@ func Walk() Config {
 	BuildTools := filepath.Join(root, "Program Files", "Microsoft Visual Studio", "2022", "BuildTools")
 
 	fnFixPath := func(path string) string {
+		path = strings.TrimSpace(path)
 		path = filepath.ToSlash(path)
 		println("origin path: ", path)
 		fixPath := strings.TrimPrefix(path, root)
