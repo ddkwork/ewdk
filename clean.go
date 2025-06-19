@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/stream"
 	"io/fs"
@@ -78,6 +79,11 @@ func Walk() Config {
 
 	fnFixPath := func(path string) string {
 		fixPath := strings.TrimPrefix(path, root)
+
+		fixPath = strings.TrimPrefix(fixPath, "Program Files\\Microsoft Visual Studio\\2022")
+		fixPath = strings.ReplaceAll(fixPath, "VC\\Tools\\MSVC\\14.41.34120", "")
+		fixPath = strings.ReplaceAll(fixPath, "BuildTools", "sdk")
+
 		fixPath = strings.ReplaceAll(fixPath, " ", "_")
 		fixPath = filepath.Join(outDir, fixPath)
 		fixPath = filepath.ToSlash(fixPath)
@@ -130,6 +136,7 @@ func Walk() Config {
 			bin64Root := filepath.Join(msvc, "bin", "Hostx64", "x64")
 			lib64 := filepath.Join(msvc, "lib", "x64")
 			stream.CopyDir(lib64, fnFixPath(lib64))
+			stream.CopyDir(bin64Root, filepath.Join(outDir, "wdk", "bin"))
 
 			bin32Root := filepath.Join(msvc, "bin", "Hostx64", "x86")
 			lib32 := filepath.Join(msvc, "lib", "x86")
@@ -182,42 +189,43 @@ func Walk() Config {
 			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/km/crt
 
 			kmdfLib := filepath.Join(wdkRoot, "Lib", "wdf", "kmdf", "x64", "1.35")
-			stream.CopyDir(kmdfLib, fnFixPath(kmdfLib))
-			cfg.kernel64Libs = append(cfg.kernel64Libs, fnFixPath(kmdfLib))
+			stream.CopyDir(kmdfLib, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", "1.35"))
+			cfg.kernel64Libs = append(cfg.kernel64Libs, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", "1.35"))
 
 			kmLib := filepath.Join(wdkRoot, "Lib", "10.0.26100.0", "km", "x64")
-			stream.CopyDir(kmLib, fnFixPath(kmLib))
-			cfg.kernel64Libs = append(cfg.kernel64Libs, fnFixPath(kmLib))
+			stream.CopyDir(kmLib, filepath.Join(outDir, "wdk", "Lib", "10.0.26100.0", "km", "x64"))
+			cfg.kernel64Libs = append(cfg.kernel64Libs, filepath.Join(outDir, "wdk", "Lib", "10.0.26100.0", "km", "x64"))
 
 			kmdfInclude := filepath.Join(wdkRoot, "Include", "wdf", "kmdf", "1.35")
-			stream.CopyDir(kmdfInclude, fnFixPath(kmdfInclude))
-			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(kmdfInclude))
+			stream.CopyDir(kmdfInclude, filepath.Join(outDir, "wdk", "Include", "wdf", "kmdf", "1.35"))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "wdf", "kmdf", "1.35"))
 
 			sharedInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "shared")
-			stream.CopyDir(sharedInclude, fnFixPath(sharedInclude))
+			stream.CopyDir(sharedInclude, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "shared"))
 			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(sharedInclude))
 
 			kmInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km")
-			stream.CopyDir(kmInclude, fnFixPath(kmInclude))
-			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(kmInclude))
+			stream.CopyDir(kmInclude, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "km"))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "km"))
 
-			crtInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km", "crt")
-			//stream.CopyDir(crtInclude, fnFixPath(crtInclude))
-			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(crtInclude))
+			//crtInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km", "crt")
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "km", "crt"))
 
-			filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
-				if strings.Contains(path, "arm") {
-					return nil
-				}
-				if info != nil {
-					if info.IsDir() {
-						return nil
-					}
-				}
-				fixPath := fnFixPath(path)
-				stream.CopyFile(path, fixPath)
-				return err
-			})
+			stream.WriteBinaryFile(filepath.Join(outDir, "wdk", "wdk.cmake"), wdkCmake)
+
+			//filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
+			//	if strings.Contains(path, "arm") {
+			//		return nil
+			//	}
+			//	if info != nil {
+			//		if info.IsDir() {
+			//			return nil
+			//		}
+			//	}
+			//	fixPath := fnFixPath(path)
+			//	stream.CopyFile(path, fixPath)
+			//	return err
+			//})
 
 			mylog.Struct(cfg)
 		},
@@ -227,3 +235,6 @@ func Walk() Config {
 	s.findWdk()
 	return cfg
 }
+
+//go:embed wdk.cmake
+var wdkCmake string
