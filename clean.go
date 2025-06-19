@@ -68,7 +68,7 @@ func Walk() Config {
 	//stream.UpdateAllLocalRep()
 	root := "V:"
 	if stream.IsRunningOnGitHubActions() {
-		root = "/mnt/ewdk"
+		root = "/mnt/ewdk" //linux 下root前面被自动加上了空格，日了狗了
 	}
 	mylog.Success("root: ", root)
 	outDir := "D:/ewdk/dist"
