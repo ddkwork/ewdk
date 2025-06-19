@@ -42,42 +42,42 @@ jobs:
 
       - name: 下载ISO
         run: |
-          # 清理URL中的不可见字符
-          CLEAN_URL=$(echo "${{ env.EWDK_ISO_URL }}" | tr -d '[:space:]')
-          echo "✅ 清理后下载URL: $CLEAN_URL"
-          
-          # 安全下载命令
-          aria2c \
-            -x 16 -s 64 -k 4M \
-            -j 16 \
-            -c "$CLEAN_URL" \
-            -d /tmp -o ewdk.iso \
-            --file-allocation=prealloc \
-            --retry-wait=1 \
-            --max-tries=3 \
-#            --log=/tmp/aria2.log \
-            --summary-interval=1 \
-            --check-certificate=false  # 避免SSL问题
+               # 清理URL中的不可见字符
+               CLEAN_URL=$(echo "${{ env.EWDK_ISO_URL }}" | tr -d '[:space:]')
+               echo "✅ 清理后下载URL: $CLEAN_URL"
+               
+               # 安全下载命令
+               aria2c \
+               -x 16 -s 64 -k 4M \
+               -j 16 \
+               -c "$CLEAN_URL" \
+               -d /tmp -o ewdk.iso \
+               --file-allocation=prealloc \
+               --retry-wait=1 \
+               --max-tries=3 \
+          #            --log=/tmp/aria2.log \
+               --summary-interval=1 \
+               --check-certificate=false  # 避免SSL问题
           
           # 验证下载文件
-          FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
-          if [ $FILE_SIZE -lt 500000000 ]; then
-            echo "❌ 错误: 文件太小 (仅 $((FILE_SIZE/1000000)) MB)"
-            exit 1
-          fi
+               FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
+               if [ $FILE_SIZE -lt 500000000 ]; then
+               echo "❌ 错误: 文件太小 (仅 $((FILE_SIZE/1000000)) MB)"
+               exit 1
+               fi
           
           # 计算实际下载速度
-          if [ -f /tmp/aria2.log ]; then
-            AVG_SPEED=$(grep 'Download Results' -A 2 /tmp/aria2.log | awk '/MiB\/s/ {print $3}')
-            echo "⚡ 平均下载速度: $AVG_SPEED MiB/s"
-          fi
-          
-          echo "✔️ ISO下载完成 ($((FILE_SIZE/1000000)) MB)"
-          echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
+               if [ -f /tmp/aria2.log ]; then
+               AVG_SPEED=$(grep 'Download Results' -A 2 /tmp/aria2.log | awk '/MiB\/s/ {print $3}')
+               echo "⚡ 平均下载速度: $AVG_SPEED MiB/s"
+               fi
+               
+               echo "✔️ ISO下载完成 ($((FILE_SIZE/1000000)) MB)"
+               echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
           
           # 立即清除下载URL环境变量
-          echo "EWDK_ISO_URL=" >> $GITHUB_ENV
-          echo "✅ 已清除下载URL环境变量"
+               echo "EWDK_ISO_URL=" >> $GITHUB_ENV
+               echo "✅ 已清除下载URL环境变量"
 
       - name: 挂载ISO
         run: |
@@ -137,14 +137,14 @@ jobs:
 
       - name: 清理资源
         run: |
-          # 卸载ISO
-          sudo umount /mnt/ewdk || true
-          
-          # 删除临时文件
-          sudo rm -rf /mnt/ewdk
-          rm -f /tmp/ewdk.iso
-          rm -f /tmp/wdk.tar.zst
-          rm -f /tmp/sdk.tar.zst
-          sudo rm -rf /tmp/zstd
-#          sudo rm -rf /tmp/aria2.log
-          echo "✅ 资源清理完成"
+               # 卸载ISO
+               sudo umount /mnt/ewdk || true
+               
+               # 删除临时文件
+               sudo rm -rf /mnt/ewdk
+               rm -f /tmp/ewdk.iso
+               rm -f /tmp/wdk.tar.zst
+               rm -f /tmp/sdk.tar.zst
+               sudo rm -rf /tmp/zstd
+          #          sudo rm -rf /tmp/aria2.log
+               echo "✅ 资源清理完成"
