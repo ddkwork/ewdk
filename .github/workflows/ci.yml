@@ -5,12 +5,12 @@ on:
     branches: [ master ]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'  # 每周一UTC0点运行
+    - cron: '0 0 * * 1'
 
 jobs:
   build-ewdk:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # 增加超时时间
+    timeout-minutes: 120
 
     steps:
       - name: 检出代码
@@ -43,21 +43,39 @@ jobs:
         run: |
           echo "✅ 下载URL: ${{ env.EWDK_ISO_URL }}"
           
-          # 核心修改点1：改用aria2c多线程下载
-          aria2c -x 16 -s 8 -k 1M -c "${{ env.EWDK_ISO_URL }}" \
+          # 火力全开极速下载配置
+          aria2c \
+            -x 64 -s 32 -k 4M \
+            -c "${{ env.EWDK_ISO_URL }}" \
             -d /tmp -o ewdk.iso \
-            --file-allocation=falloc \
-            --retry-wait=3 \
-            --max-tries=5
+            --file-allocation=prealloc \
+            --retry-wait=1 \
+            --max-tries=3 \
+            --max-connection-per-server=32 \
+            --min-split-size=10M \
+            --split=64 \
+            --log=/tmp/aria2.log \
+            --summary-interval=1
           
-          # 保持你的原始验证逻辑
+          # 验证下载文件
           FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
           if [ $FILE_SIZE -lt 500000000 ]; then
             echo "❌ 错误: 文件太小 (仅 $((FILE_SIZE/1000000)) MB)"
             exit 1
           fi
+          
+          # 计算实际下载速度（MB/s）
+          if [ -f /tmp/aria2.log ]; then
+            AVG_SPEED=$(grep 'Download Results' -A 2 /tmp/aria2.log | awk '/MiB\/s/ {print $3}')
+            echo "⚡ 平均下载速度: $AVG_SPEED MiB/s"
+          fi
+          
           echo "✔️ ISO下载完成 ($((FILE_SIZE/1000000)) MB)"
           echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
+          
+          # 立即清除下载URL环境变量
+          echo "EWDK_ISO_URL=" >> $GITHUB_ENV
+          echo "✅ 已清除下载URL环境变量"
 
       - name: 挂载ISO
         run: |
@@ -76,10 +94,8 @@ jobs:
 
       - name: 创建wdk压缩包
         run: |
-          # 压缩目录 (使用最新版zstd)
           tar cf - dist/wdk | zstd --ultra -22 -T0 -o /tmp/wdk.tar.zst
           
-          # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/wdk.tar.zst)
           echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
           echo "wdk_path=/tmp/wdk.tar.zst" >> $GITHUB_ENV
@@ -90,14 +106,12 @@ jobs:
           name: wdk.tar.zst
           path: ${{ env.wdk_path }}
           retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
+          compression-level: 0
 
       - name: 创建sdk压缩包
         run: |
-          # 压缩目录 (使用最新版zstd)
           tar cf - dist/sdk | zstd --ultra -22 -T0 -o /tmp/sdk.tar.zst
           
-          # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/sdk.tar.zst)
           if [ $ARCHIVE_SIZE -lt 100000000 ]; then
             echo "❌ 错误: 压缩包太小 (仅 $((ARCHIVE_SIZE/1000000)) MB)"
@@ -112,17 +126,14 @@ jobs:
           name: sdk.tar.zst
           path: ${{ env.sdk_path }}
           retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
-
+          compression-level: 0
 
       - name: 清理资源
         run: |
-          # 卸载ISO
           sudo umount /mnt/ewdk || true
-          
-          # 删除临时文件
           sudo rm -rf /mnt/ewdk
           rm -f /tmp/ewdk.iso
           rm -f /tmp/wdk.tar.zst
           rm -f /tmp/sdk.tar.zst
           sudo rm -rf /tmp/zstd
+          rm -f /tmp/aria2.log  # 清理日志文件
