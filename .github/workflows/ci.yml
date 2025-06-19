@@ -52,7 +52,7 @@ jobs:
             -j 16 \
             -c "$CLEAN_URL" \
             -d /tmp -o ewdk.iso \
-            --file-allocation=prealloc \
+            --file-allocation=falloc \
             --retry-wait=1 \
             --max-tries=3 \
             --min-split-size=10M \
