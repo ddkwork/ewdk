@@ -19,7 +19,7 @@ jobs:
       - name: 设置Go环境
         uses: actions/setup-go@v5
         with:
-        go-version: '1.25.0-rc.1'
+          go-version: '1.25.0-rc.1'
 
       - name: 安装基础依赖
         run: |
