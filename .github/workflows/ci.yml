@@ -48,12 +48,15 @@ jobs:
           
           # 安全下载命令
           aria2c \
-            -x 16 -s 8 -k 1M \
+            -x 16 -s 64 -k 4M \
+            -j 16 \
             -c "$CLEAN_URL" \
             -d /tmp -o ewdk.iso \
-            --file-allocation=falloc \
+            --file-allocation=prealloc \
             --retry-wait=1 \
             --max-tries=3 \
+            --log=/tmp/aria2.log \
+            --summary-interval=1 \
             --check-certificate=false  # 避免SSL问题
           
           # 验证下载文件
