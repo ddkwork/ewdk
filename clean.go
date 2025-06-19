@@ -89,6 +89,7 @@ func Walk() Config {
 		fixPath = strings.ReplaceAll(fixPath, " ", "_")
 		fixPath = filepath.Join(outDir, fixPath)
 		fixPath = filepath.ToSlash(fixPath)
+		println(fixPath)
 		return fixPath
 	}
 
