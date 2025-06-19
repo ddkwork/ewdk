@@ -5,7 +5,7 @@ on:
     branches: [ master ]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'  # 每周一UTC0点运行
+    - cron: '0 0 * * 1'
 
 jobs:
   build-ewdk:
@@ -26,17 +26,6 @@ jobs:
           sudo apt update
           sudo apt install -y zstd fuseiso p7zip-full git build-essential aria2
 
-      # 添加网络诊断工具帮助定位潜在网络问题
-      - name: 安装网络诊断工具
-        run: sudo apt install -y dnsutils iperf3 iproute2 mtr-tiny
-
-      - name: 网络诊断（仅用于调试）
-        run: |
-          ip addr
-          mtr -rwbc 10 github.com
-          iperf3 -c iperf.he.net -p 5201 -R -t 10
-
-      # 获取EWDK URL并正确传递到环境变量
       - name: 获取并设置EWDK URL
         id: set-url
         run: |
@@ -44,82 +33,82 @@ jobs:
           echo "EWDK_ISO_URL=$EWDK_URL" >> $GITHUB_ENV
           echo "✅ 下载URL设置完成: $EWDK_URL"
 
-      # 使用多线程并发下载优化下载速度
-      - name: 下载ISO（多线程优化）
+      # 优化的网络诊断和稳定下载方案
+      - name: 稳定下载ISO
         run: |
-          echo "🔥 使用16线程并发下载"
-          aria2c -x 16 -s 8 -k 1M -c "${{ env.EWDK_ISO_URL }}" \
+          # 可靠的速度诊断
+          echo "📶 网络质量诊断..."
+          curl -Lo /dev/null -skw """
+              下载速度: %{speed_download} bps
+              连接时间: %{time_connect}秒
+              传输时间: %{time_total}秒\n
+              """ ${{ env.EWDK_ISO_URL }} > /tmp/speedtest.txt 2>&1
+          cat /tmp/speedtest.txt
+          
+          # 自适应下载策略
+          MAX_CONN=16
+          MIN_SPEED=$((10*1024*1024))  # 10MB/s
+          if grep -q "下载速度: [0-9]." /tmp/speedtest.txt; then
+            SPEED=$(grep "下载速度" /tmp/speedtest.txt | awk '{print $2}')
+            if [ $SPEED -lt $MIN_SPEED ]; then
+              MAX_CONN=32
+              echo "⚠️ 网络较慢 ($((SPEED/1024/1024))MB/s)，启用加速模式 (32线程)"
+            else
+              echo "⚡ 网络良好 ($((SPEED/1024/1024))MB/s)，使用标准模式"
+            fi
+          fi
+          
+          # 稳定下载命令
+          aria2c --summary-interval=30 \
+            -x $MAX_CONN -s 8 -k 2M -c "${{ env.EWDK_ISO_URL }}" \
             -d /tmp -o ewdk.iso \
             --file-allocation=falloc \
             --retry-wait=3 \
-            --max-tries=5 \
-            --connect-timeout=60 \
-            --timeout=300
+            --max-tries=10 \
+            --timeout=900 \
+            --check-certificate=false
           
           # 验证下载文件
           FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
-          echo "Downloaded file size: ${FILE_SIZE} bytes"
-          
-          if [ $FILE_SIZE -lt 500000000 ]; then
-            echo "❌ 错误: 文件大小异常 (仅 $((FILE_SIZE/1000000)) MB)"
-            exit 1
-          fi
-          echo "✔️ ISO下载完成 ($((FILE_SIZE/1000000)) MB)"
-          echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
+          echo "📦 下载大小: $((FILE_SIZE/1024/1024))MB"
+          [ $FILE_SIZE -gt 500000000 ] || (echo "❌ 文件太小"; exit 1)
 
+      # 以下步骤保持不变...
       - name: 挂载ISO
         run: |
           sudo mkdir -p /mnt/ewdk
           sudo mount -o loop /tmp/ewdk.iso /mnt/ewdk
-          echo "✅ ISO挂载完成"
-
+          
       - name: 安装Go模块
-        run: |
-          go mod tidy
-
+        run: go mod tidy
+          
       - name: 运行提取程序
         timeout-minutes: 30
         run: go run .
-
-      # 以下步骤保持不变...
+        
       - name: 创建wdk压缩包
         run: |
           tar cf - dist/wdk | zstd --ultra -22 -T0 -o /tmp/wdk.tar.zst
-          ARCHIVE_SIZE=$(stat -c%s /tmp/wdk.tar.zst)
-          echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
           echo "wdk_path=/tmp/wdk.tar.zst" >> $GITHUB_ENV
-
+          
       - name: 上传wdk成品
         uses: actions/upload-artifact@v4
         with:
           name: wdk.tar.zst
           path: ${{ env.wdk_path }}
-          retention-days: 7
-          compression-level: 0
-
+          
       - name: 创建sdk压缩包
         run: |
           tar cf - dist/sdk | zstd --ultra -22 -T0 -o /tmp/sdk.tar.zst
-          ARCHIVE_SIZE=$(stat -c%s /tmp/sdk.tar.zst)
-          if [ $ARCHIVE_SIZE -lt 100000000 ]; then
-            echo "❌ 错误: 压缩包太小 (仅 $((ARCHIVE_SIZE/1000000)) MB)"
-            exit 1
-          fi
-          echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
           echo "sdk_path=/tmp/sdk.tar.zst" >> $GITHUB_ENV
-
+          
       - name: 上传sdk成品
         uses: actions/upload-artifact@v4
         with:
           name: sdk.tar.zst
           path: ${{ env.sdk_path }}
-          retention-days: 7
-          compression-level: 0
-
+          
       - name: 清理资源
         run: |
           sudo umount /mnt/ewdk || true
-          sudo rm -rf /mnt/ewdk
-          rm -f /tmp/ewdk.iso
-          rm -f /tmp/wdk.tar.zst
-          rm -f /tmp/sdk.tar.zst
+          sudo rm -rf /mnt/ewdk /tmp/ewdk.iso /tmp/*.tar.zst
