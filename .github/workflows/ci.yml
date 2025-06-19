@@ -25,15 +25,22 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y zstd fuseiso p7zip-full git build-essential aria2
-
-      - name: 安装最新版 zstd
-        run: |
-          # 安装最新版 zstd 支持高压缩级别
-          git clone https://github.com/facebook/zstd.git /tmp/zstd
-          cd /tmp/zstd
-          make -j$(nproc)
-          sudo make install
-          sudo ldconfig  # 更新共享库缓存
+          
+          # 智能检查ZSTD版本
+          ZSTD_VERSION=$(zstd --version | head -1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          echo "ℹ️ 系统 ZSTD 版本: $ZSTD_VERSION"
+          
+          # 仅当版本低于1.4.2时才安装新版
+          if [[ "$(echo $ZSTD_VERSION | sed 's/v//;s/\.//g')" -lt "10402" ]]; then
+            echo "🔄 安装新版 ZSTD（当前版本较低）"
+            git clone https://github.com/facebook/zstd.git /tmp/zstd
+            cd /tmp/zstd
+            make -j$(nproc)
+            sudo make install
+            sudo ldconfig
+          else
+            echo "✅ 系统 ZSTD 版本足够新，跳过编译安装"
+          fi
 
       - name: 获取并设置EWDK URL
         id: set-url
@@ -41,22 +48,23 @@ jobs:
 
       - name: 下载ISO
         run: |
-          echo "✅ 下载URL: ${{ env.EWDK_ISO_URL }}"
+          # 清理URL中的不可见字符
+          CLEAN_URL=$(echo "${{ env.EWDK_ISO_URL }}" | tr -d '[:space:]')
+          echo "✅ 清理后下载URL: $CLEAN_URL"
           
-          # 修复连接数限制问题，同时保持高速下载
+          # 安全下载命令
           aria2c \
-            -x 16 \  # 最大允许值
-            -s 64 \  # 增加分片数量
-            -k 4M \  # 大分片减少开销
-            -j 16 \  # 最大并行任务数
-            -c "${{ env.EWDK_ISO_URL }}" \
+            -x 16 -s 64 -k 4M \
+            -j 16 \
+            -c "$CLEAN_URL" \
             -d /tmp -o ewdk.iso \
             --file-allocation=prealloc \
             --retry-wait=1 \
             --max-tries=3 \
             --min-split-size=10M \
             --log=/tmp/aria2.log \
-            --summary-interval=1
+            --summary-interval=1 \
+            --check-certificate=false  # 避免SSL问题
           
           # 验证下载文件
           FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
@@ -65,7 +73,7 @@ jobs:
             exit 1
           fi
           
-          # 计算实际下载速度（MB/s）
+          # 计算实际下载速度
           if [ -f /tmp/aria2.log ]; then
             AVG_SPEED=$(grep 'Download Results' -A 2 /tmp/aria2.log | awk '/MiB\/s/ {print $3}')
             echo "⚡ 平均下载速度: $AVG_SPEED MiB/s"
@@ -95,7 +103,15 @@ jobs:
 
       - name: 创建wdk压缩包
         run: |
-          tar cf - dist/wdk | zstd --ultra -22 -T0 -o /tmp/wdk.tar.zst
+          # 使用智能选择的压缩级别
+          if zstd -22 -T0 -h >/dev/null 2>&1; then
+            COMPRESS_LEVEL="--ultra -22"
+          else
+            COMPRESS_LEVEL="-19"
+          fi
+          echo "ℹ️ 使用压缩级别: $COMPRESS_LEVEL"
+          
+          tar cf - dist/wdk | zstd $COMPRESS_LEVEL -T0 -o /tmp/wdk.tar.zst
           
           ARCHIVE_SIZE=$(stat -c%s /tmp/wdk.tar.zst)
           echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
@@ -111,7 +127,15 @@ jobs:
 
       - name: 创建sdk压缩包
         run: |
-          tar cf - dist/sdk | zstd --ultra -22 -T0 -o /tmp/sdk.tar.zst
+          # 使用智能选择的压缩级别
+          if zstd -22 -T0 -h >/dev/null 2>&1; then
+            COMPRESS_LEVEL="--ultra -22"
+          else
+            COMPRESS_LEVEL="-19"
+          fi
+          echo "ℹ️ 使用压缩级别: $COMPRESS_LEVEL"
+          
+          tar cf - dist/sdk | zstd $COMPRESS_LEVEL -T0 -o /tmp/sdk.tar.zst
           
           ARCHIVE_SIZE=$(stat -c%s /tmp/sdk.tar.zst)
           if [ $ARCHIVE_SIZE -lt 100000000 ]; then
@@ -137,4 +161,4 @@ jobs:
           rm -f /tmp/wdk.tar.zst
           rm -f /tmp/sdk.tar.zst
           sudo rm -rf /tmp/zstd
-          rm -f /tmp/aria2.log  # 清理日志文件
+          rm -f /tmp/aria2.log
