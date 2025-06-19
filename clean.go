@@ -81,7 +81,7 @@ func Walk() Config {
 	fnFixPath := func(path string) string {
 		path = strings.TrimSpace(path)
 		path = filepath.ToSlash(path)
-		println("origin path: ", path)
+		//println("origin path: ", path)
 		fixPath := strings.TrimPrefix(path, root)
 		//fixPath = strings.TrimPrefix(fixPath, "Program Files\\Microsoft Visual Studio\\2022")
 		fixPath = strings.TrimPrefix(fixPath, filepath.ToSlash("/Program Files/Microsoft Visual Studio/2022"))
