@@ -10,7 +10,7 @@ on:
 jobs:
   build-ewdk:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # 增加超时时间
+    timeout-minutes: 120
 
     steps:
       - name: 检出代码
@@ -24,31 +24,44 @@ jobs:
       - name: 安装基础依赖
         run: |
           sudo apt update
-          sudo apt install -y zstd fuseiso p7zip-full git build-essential
+          sudo apt install -y zstd fuseiso p7zip-full git build-essential aria2
 
-      - name: 安装最新版 zstd
+      # 添加网络诊断工具帮助定位潜在网络问题
+      - name: 安装网络诊断工具
+        run: sudo apt install -y dnsutils iperf3 iproute2 mtr-tiny
+
+      - name: 网络诊断（仅用于调试）
         run: |
-          # 安装最新版 zstd 支持高压缩级别
-          git clone https://github.com/facebook/zstd.git /tmp/zstd
-          cd /tmp/zstd
-          make -j$(nproc)
-          sudo make install
-          sudo ldconfig  # 更新共享库缓存
+          ip addr
+          mtr -rwbc 10 github.com
+          iperf3 -c iperf.he.net -p 5201 -R -t 10
 
+      # 获取EWDK URL并正确传递到环境变量
       - name: 获取并设置EWDK URL
         id: set-url
-        run: go run scripts/get_ewdk_url.go
-
-      - name: 下载ISO
         run: |
-          echo "✅ 下载URL: ${{ env.EWDK_ISO_URL }}"
-          curl -L -o /tmp/ewdk.iso "${{ env.EWDK_ISO_URL }}" \
-            --retry 5 --retry-delay 3 --max-time 600
+          EWDK_URL=$(go run scripts/get_ewdk_url.go)
+          echo "EWDK_ISO_URL=$EWDK_URL" >> $GITHUB_ENV
+          echo "✅ 下载URL设置完成: $EWDK_URL"
+
+      # 使用多线程并发下载优化下载速度
+      - name: 下载ISO（多线程优化）
+        run: |
+          echo "🔥 使用16线程并发下载"
+          aria2c -x 16 -s 8 -k 1M -c "${{ env.EWDK_ISO_URL }}" \
+            -d /tmp -o ewdk.iso \
+            --file-allocation=falloc \
+            --retry-wait=3 \
+            --max-tries=5 \
+            --connect-timeout=60 \
+            --timeout=300
           
           # 验证下载文件
           FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
+          echo "Downloaded file size: ${FILE_SIZE} bytes"
+          
           if [ $FILE_SIZE -lt 500000000 ]; then
-            echo "❌ 错误: 文件太小 (仅 $((FILE_SIZE/1000000)) MB)"
+            echo "❌ 错误: 文件大小异常 (仅 $((FILE_SIZE/1000000)) MB)"
             exit 1
           fi
           echo "✔️ ISO下载完成 ($((FILE_SIZE/1000000)) MB)"
@@ -66,15 +79,12 @@ jobs:
 
       - name: 运行提取程序
         timeout-minutes: 30
-        run: |
-          go run .
+        run: go run .
 
+      # 以下步骤保持不变...
       - name: 创建wdk压缩包
         run: |
-          # 压缩目录 (使用最新版zstd)
           tar cf - dist/wdk | zstd --ultra -22 -T0 -o /tmp/wdk.tar.zst
-          
-          # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/wdk.tar.zst)
           echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
           echo "wdk_path=/tmp/wdk.tar.zst" >> $GITHUB_ENV
@@ -85,14 +95,11 @@ jobs:
           name: wdk.tar.zst
           path: ${{ env.wdk_path }}
           retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
+          compression-level: 0
 
       - name: 创建sdk压缩包
         run: |
-          # 压缩目录 (使用最新版zstd)
           tar cf - dist/sdk | zstd --ultra -22 -T0 -o /tmp/sdk.tar.zst
-          
-          # 验证压缩包
           ARCHIVE_SIZE=$(stat -c%s /tmp/sdk.tar.zst)
           if [ $ARCHIVE_SIZE -lt 100000000 ]; then
             echo "❌ 错误: 压缩包太小 (仅 $((ARCHIVE_SIZE/1000000)) MB)"
@@ -107,17 +114,12 @@ jobs:
           name: sdk.tar.zst
           path: ${{ env.sdk_path }}
           retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
-
+          compression-level: 0
 
       - name: 清理资源
         run: |
-          # 卸载ISO
           sudo umount /mnt/ewdk || true
-          
-          # 删除临时文件
           sudo rm -rf /mnt/ewdk
           rm -f /tmp/ewdk.iso
           rm -f /tmp/wdk.tar.zst
           rm -f /tmp/sdk.tar.zst
-          sudo rm -rf /tmp/zstd
