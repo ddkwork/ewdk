@@ -55,7 +55,7 @@ jobs:
             --file-allocation=prealloc \
             --retry-wait=1 \
             --max-tries=3 \
-            --log=/tmp/aria2.log \
+#            --log=/tmp/aria2.log \
             --summary-interval=1 \
             --check-certificate=false  # 避免SSL问题
           
@@ -146,5 +146,5 @@ jobs:
           rm -f /tmp/wdk.tar.zst
           rm -f /tmp/sdk.tar.zst
           sudo rm -rf /tmp/zstd
-          sudo rm -rf /tmp/aria2.log
+#          sudo rm -rf /tmp/aria2.log
           echo "✅ 资源清理完成"
