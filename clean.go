@@ -63,7 +63,7 @@ func Walk() Config {
 	if stream.IsRunningOnGitHubActions() {
 		outDir = "dist"
 	}
-	os.RemoveAll(outDir)
+	mylog.Check(os.RemoveAll(outDir))
 	BuildTools := filepath.Join(root, "Program Files", "Microsoft Visual Studio", "2022", "BuildTools")
 
 	fnFixPath := func(path string) string {
@@ -77,7 +77,7 @@ func Walk() Config {
 		fixPath = strings.ReplaceAll(fixPath, "DIA SDK", "dia")
 		fixPath = filepath.Join(outDir, fixPath)
 		fixPath = filepath.ToSlash(fixPath)
-		println("fix path: ", fixPath)
+		println("fix path:", fixPath)
 		return fixPath
 	}
 
@@ -194,6 +194,21 @@ func Walk() Config {
 
 			stream.WriteBinaryFile(filepath.Join(outDir, "wdk", "wdk.cmake"), wdkCmake)
 			stream.WriteBinaryFile(filepath.Join(outDir, "sdk", "sdk.cmake"), sdkCmake)
+
+			fnRemoveTelemetry := func(dir string) {
+				filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+					if filepath.Ext(path) == ".dll" {
+						if strings.Contains(path, "Microsoft.VisualStudio.") { //Microsoft.VisualStudio.RemoteControl.dll
+							mylog.Check(os.Remove(path))
+							mylog.Success("remove", path)
+						}
+					}
+					return err
+				})
+			}
+
+			fnRemoveTelemetry(filepath.Join(outDir, "/wdk/bin"))
+			fnRemoveTelemetry(filepath.Join(outDir, "/sdk/bin"))
 
 			mylog.Struct(cfg)
 			//filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {

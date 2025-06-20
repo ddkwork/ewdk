@@ -1,2 +1,16 @@
-wdk_add_driver(kernel_helloworld main.cpp main.h)
-#target_link_libraries(kernel_helloworld "$ENV{WDKContentRoot}\\Lib\\10.0.22000.0\\km\\x64\\wdmsec.lib")
+cmake_minimum_required(VERSION 3.20)
+project(kernel_helloworld)
+
+include(D:/ewdk/dist/wdk/wdk.cmake)
+
+wdk_add_exe(kernel_helloworld
+        "*.c"
+        "*.h"
+        "*.asm"
+)
+
+wdk_add_clean_all_target()
+
+
+
+

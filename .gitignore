@@ -3,3 +3,4 @@ log.log
 .idea
 /bug.log
 dist/
+cmake-build-debug

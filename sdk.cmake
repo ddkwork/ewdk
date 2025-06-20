@@ -221,7 +221,7 @@ endfunction()
 
 # ====================== 目标构建 ======================
 # 构建可执行文件
-function(sdk_add_executable target)
+function(sdk_add_exe target)
     cmake_parse_arguments(ARG "" "ENTRY;ARCH" "SOURCES;LIBS" ${ARGN})
     if(NOT ARG_ARCH)
         set(ARG_ARCH ${SDK_ARCH})
