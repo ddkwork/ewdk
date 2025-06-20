@@ -12,6 +12,17 @@ import (
 	"github.com/ddkwork/golibrary/std/stream"
 )
 
+func main() {
+	Walk()
+}
+
+const (
+	kmdfVersion = "1.35"
+	wdkVersion  = "10.0.26100.0"
+	vcVersion   = "14.41.34120"
+	vsVersion   = "2022"
+)
+
 type (
 	setup struct {
 		findDiaSdk         func()
@@ -19,7 +30,7 @@ type (
 		findWdk            func()
 	}
 )
-type bin struct {
+type bin struct { //todo.add.flags,give .h get filepath.dir into include dir
 	cc   string
 	lib  string
 	link string
@@ -32,16 +43,12 @@ type Config struct {
 
 	kernelIncludes []string
 	kernel64Libs   []string
-	kernel32Libs   []string
 
 	Bins64   bin
 	Bins32   bin
 	msdia140 string
 }
 
-func main() {
-	Walk()
-}
 func Walk() Config {
 	cfg := Config{
 		userIncludes:   make([]string, 0),
@@ -49,7 +56,6 @@ func Walk() Config {
 		user32Libs:     make([]string, 0),
 		kernelIncludes: make([]string, 0),
 		kernel64Libs:   make([]string, 0),
-		kernel32Libs:   make([]string, 0),
 		Bins64: bin{
 			cc:   "",
 			lib:  "",
@@ -81,14 +87,11 @@ func Walk() Config {
 	fnFixPath := func(path string) string {
 		path = strings.TrimSpace(path)
 		path = filepath.ToSlash(path)
-		//println("origin path: ", path)
 		fixPath := strings.TrimPrefix(path, root)
-		//fixPath = strings.TrimPrefix(fixPath, "Program Files\\Microsoft Visual Studio\\2022")
-		fixPath = strings.TrimPrefix(fixPath, filepath.ToSlash("/Program Files/Microsoft Visual Studio/2022"))
-		//fixPath = strings.ReplaceAll(fixPath, "VC\\Tools\\MSVC\\14.41.34120", "")
-		fixPath = strings.ReplaceAll(fixPath, filepath.ToSlash("/VC/Tools/MSVC/14.41.34120"), "")
+		fixPath = strings.TrimPrefix(fixPath, "/")
+		fixPath = strings.TrimPrefix(fixPath, "Program Files/Microsoft Visual Studio/"+vsVersion)
+		fixPath = strings.ReplaceAll(fixPath, "/VC/Tools/MSVC/"+vcVersion, "")
 		fixPath = strings.ReplaceAll(fixPath, "BuildTools", "sdk")
-
 		fixPath = strings.ReplaceAll(fixPath, "DIA SDK", "dia")
 		fixPath = filepath.Join(outDir, fixPath)
 		fixPath = filepath.ToSlash(fixPath)
@@ -186,39 +189,29 @@ func Walk() Config {
 		findWdk: func() {
 			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
 
-			//dist/Program_Files/Windows_Kits/10/Lib/10.0.26100.0/km/x64
-			//dist/Program_Files/Windows_Kits/10/Lib/wdf/kmdf/x64/1.35
+			kmdfLib := filepath.Join(wdkRoot, "Lib", "wdf", "kmdf", "x64", kmdfVersion)
+			stream.CopyDir(kmdfLib, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", kmdfVersion))
+			cfg.kernel64Libs = append(cfg.kernel64Libs, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", kmdfVersion))
 
-			//dist/Program_Files/Windows_Kits/10/Include/wdf/kmdf/1.35
-			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/shared
-			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/km
-			//dist/Program_Files/Windows_Kits/10/Include/10.0.26100.0/km/crt
+			kmLib := filepath.Join(wdkRoot, "Lib", wdkVersion, "km", "x64")
+			stream.CopyDir(kmLib, filepath.Join(outDir, "wdk", "Lib", wdkVersion, "km", "x64"))
+			cfg.kernel64Libs = append(cfg.kernel64Libs, filepath.Join(outDir, "wdk", "Lib", wdkVersion, "km", "x64"))
 
-			kmdfLib := filepath.Join(wdkRoot, "Lib", "wdf", "kmdf", "x64", "1.35")
-			stream.CopyDir(kmdfLib, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", "1.35"))
-			cfg.kernel64Libs = append(cfg.kernel64Libs, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", "1.35"))
+			kmdfInclude := filepath.Join(wdkRoot, "Include", "wdf", "kmdf", kmdfVersion)
+			stream.CopyDir(kmdfInclude, filepath.Join(outDir, "wdk", "Include", "wdf", "kmdf", kmdfVersion))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "wdf", "kmdf", kmdfVersion))
 
-			kmLib := filepath.Join(wdkRoot, "Lib", "10.0.26100.0", "km", "x64")
-			stream.CopyDir(kmLib, filepath.Join(outDir, "wdk", "Lib", "10.0.26100.0", "km", "x64"))
-			cfg.kernel64Libs = append(cfg.kernel64Libs, filepath.Join(outDir, "wdk", "Lib", "10.0.26100.0", "km", "x64"))
+			sharedInclude := filepath.Join(wdkRoot, "Include", wdkVersion, "shared")
+			stream.CopyDir(sharedInclude, filepath.Join(outDir, "wdk", "Include", wdkVersion, "shared"))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", wdkVersion, "shared"))
 
-			kmdfInclude := filepath.Join(wdkRoot, "Include", "wdf", "kmdf", "1.35")
-			stream.CopyDir(kmdfInclude, filepath.Join(outDir, "wdk", "Include", "wdf", "kmdf", "1.35"))
-			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "wdf", "kmdf", "1.35"))
-
-			sharedInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "shared")
-			stream.CopyDir(sharedInclude, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "shared"))
-			cfg.kernelIncludes = append(cfg.kernelIncludes, fnFixPath(sharedInclude))
-
-			kmInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km")
-			stream.CopyDir(kmInclude, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "km"))
-			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "km"))
-
-			//crtInclude := filepath.Join(wdkRoot, "Include", "10.0.26100.0", "km", "crt")
-			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", "10.0.26100.0", "km", "crt"))
+			kmInclude := filepath.Join(wdkRoot, "Include", wdkVersion, "km")
+			stream.CopyDir(kmInclude, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km"))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km"))
+			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km", "crt"))
 
 			stream.WriteBinaryFile(filepath.Join(outDir, "wdk", "wdk.cmake"), wdkCmake)
-
+			mylog.Struct(cfg)
 			//filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
 			//	if strings.Contains(path, "arm") {
 			//		return nil
@@ -232,8 +225,6 @@ func Walk() Config {
 			//	stream.CopyFile(path, fixPath)
 			//	return err
 			//})
-
-			mylog.Struct(cfg)
 		},
 	}
 	s.findDiaSdk()
