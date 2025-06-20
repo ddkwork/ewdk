@@ -65,6 +65,8 @@ func Walk() Config {
 	}
 	mylog.Check(os.RemoveAll(outDir))
 	BuildTools := filepath.Join(root, "Program Files", "Microsoft Visual Studio", "2022", "BuildTools")
+	sdkRoot := filepath.Join(BuildTools, "VC", "Tools", "MSVC")
+	wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
 
 	fnFixPath := func(path string) string {
 		path = strings.TrimSpace(path)
@@ -111,26 +113,25 @@ func Walk() Config {
 			})
 		},
 		findSdk: func() {
-			msvc := filepath.Join(BuildTools, "VC", "Tools", "MSVC")
-			filepath.Walk(msvc, func(path string, info fs.FileInfo, err error) error {
+			filepath.Walk(sdkRoot, func(path string, info fs.FileInfo, err error) error {
 				if filepath.Base(path) == "bin" {
-					msvc = filepath.Dir(path)
+					sdkRoot = filepath.Dir(path)
 					return nil
 				}
 				return err
 			})
 
-			include := filepath.Join(msvc, "include")
+			include := filepath.Join(sdkRoot, "include")
 			fixInclude := fnFixPath(include)
 			stream.CopyDir(include, fixInclude)
 
-			bin64Root := filepath.Join(msvc, "bin", "Hostx64", "x64")
-			lib64 := filepath.Join(msvc, "lib", "x64")
+			bin64Root := filepath.Join(sdkRoot, "bin", "Hostx64", "x64")
+			lib64 := filepath.Join(sdkRoot, "lib", "x64")
 			stream.CopyDir(lib64, fnFixPath(lib64))
 			stream.CopyDir(bin64Root, filepath.Join(outDir, "wdk", "bin"))
 
-			bin32Root := filepath.Join(msvc, "bin", "Hostx64", "x86")
-			lib32 := filepath.Join(msvc, "lib", "x86")
+			bin32Root := filepath.Join(sdkRoot, "bin", "Hostx64", "x86")
+			lib32 := filepath.Join(sdkRoot, "lib", "x86")
 			stream.CopyDir(lib32, fnFixPath(lib32))
 
 			stream.CopyDir(bin64Root, fnFixPath(bin64Root))
@@ -169,7 +170,6 @@ func Walk() Config {
 			cfg.user32Libs = append(cfg.user32Libs, fnFixPath(lib32))
 		},
 		findWdk: func() {
-			wdkRoot := filepath.Join(root, "Program Files", "Windows Kits", "10")
 
 			kmdfLib := filepath.Join(wdkRoot, "Lib", "wdf", "kmdf", "x64", kmdfVersion)
 			stream.CopyDir(kmdfLib, filepath.Join(outDir, "wdk", "Lib", "wdf", "kmdf", "x64", kmdfVersion))
@@ -191,6 +191,16 @@ func Walk() Config {
 			stream.CopyDir(kmInclude, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km"))
 			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km"))
 			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km", "crt"))
+
+			/////////////////////////////////////////////////////////// user level
+			umInclude := filepath.Join(wdkRoot, "Include", wdkVersion, "um")
+			stream.CopyDir(umInclude, filepath.Join(outDir, "sdk", "include", "um"))
+			cfg.userIncludes = append(cfg.userIncludes, filepath.Join(outDir, "sdk", "include", "um"))
+
+			ucrtInclude := filepath.Join(wdkRoot, "Include", wdkVersion, "ucrt")
+			stream.CopyDir(ucrtInclude, filepath.Join(outDir, "sdk", "include", "ucrt"))
+			cfg.userIncludes = append(cfg.userIncludes, filepath.Join(outDir, "sdk", "include", "ucrt"))
+			/////////////////////////////////////////////////////////// user level
 
 			stream.WriteBinaryFile(filepath.Join(outDir, "wdk", "wdk.cmake"), wdkCmake)
 			stream.WriteBinaryFile(filepath.Join(outDir, "sdk", "sdk.cmake"), sdkCmake)
