@@ -1,16 +1,16 @@
-cmake_minimum_required(VERSION 3.20)
 project(user_helloworld)
 
-include(D:/ewdk/dist/wdk/wdk.cmake)
+include(D:/ewdk/dist/sdk/sdk.cmake)
 
-wdk_add_driver(user_helloworld
+#todo bug No SOURCES given to target: user_helloworld_nav
+sdk_add_exe(user_helloworld
         "*.cpp"
         "*.c"
         "*.h"
         "*.asm"
 )
 
-wdk_add_clean_all_target()
+#add_clean_target(user_helloworld)#todo bug  another target with the same name already exists.  The existing target is a
 
 
 
