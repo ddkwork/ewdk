@@ -25,9 +25,9 @@ const (
 
 type (
 	setup struct {
-		findDiaSdk         func()
-		findMsvcBuildTools func()
-		findWdk            func()
+		findDia func()
+		findSdk func() //以及32和64位编译器和lib,include
+		findWdk func() //仅支持64位编译器和lib,include
 	}
 )
 type bin struct { //todo.add.flags,give .h get filepath.dir into include dir
@@ -100,7 +100,7 @@ func Walk() Config {
 	}
 
 	s := setup{
-		findDiaSdk: func() {
+		findDia: func() {
 			once := sync.Once{}
 			diaRoot := filepath.Join(BuildTools, "DIA SDK")
 			filepath.Walk(diaRoot, func(path string, info fs.FileInfo, err error) error {
@@ -128,7 +128,7 @@ func Walk() Config {
 				return err
 			})
 		},
-		findMsvcBuildTools: func() {
+		findSdk: func() {
 			msvc := filepath.Join(BuildTools, "VC", "Tools", "MSVC")
 			filepath.Walk(msvc, func(path string, info fs.FileInfo, err error) error {
 				if filepath.Base(path) == "bin" {
@@ -227,8 +227,8 @@ func Walk() Config {
 			//})
 		},
 	}
-	s.findDiaSdk()
-	s.findMsvcBuildTools()
+	s.findDia()
+	s.findSdk()
 	s.findWdk()
 	return cfg
 }
