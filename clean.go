@@ -23,31 +23,13 @@ const (
 	vsVersion   = "2022"
 )
 
-type (
-	setup struct {
-		findDia func()
-		findSdk func() //以及32和64位编译器和lib,include
-		findWdk func() //仅支持64位编译器和lib,include
-	}
+var (
+	//go:embed wdk.cmake
+	wdkCmake string
+
+	//go:embed sdk.cmake
+	sdkCmake string
 )
-type bin struct { //todo.add.flags,give .h get filepath.dir into include dir
-	cc   string
-	lib  string
-	link string
-	asm  string
-}
-type Config struct {
-	userIncludes []string
-	user64Libs   []string
-	user32Libs   []string
-
-	kernelIncludes []string
-	kernel64Libs   []string
-
-	Bins64   bin
-	Bins32   bin
-	msdia140 string
-}
 
 func Walk() Config {
 	cfg := Config{
@@ -211,6 +193,8 @@ func Walk() Config {
 			cfg.kernelIncludes = append(cfg.kernelIncludes, filepath.Join(outDir, "wdk", "Include", wdkVersion, "km", "crt"))
 
 			stream.WriteBinaryFile(filepath.Join(outDir, "wdk", "wdk.cmake"), wdkCmake)
+			stream.WriteBinaryFile(filepath.Join(outDir, "sdk", "sdk.cmake"), sdkCmake)
+
 			mylog.Struct(cfg)
 			//filepath.Walk(filepath.Join(wdkRoot, "Debuggers"), func(path string, info fs.FileInfo, err error) error {
 			//	if strings.Contains(path, "arm") {
@@ -233,5 +217,28 @@ func Walk() Config {
 	return cfg
 }
 
-//go:embed wdk.cmake
-var wdkCmake string
+type (
+	setup struct {
+		findDia func()
+		findSdk func() //以及32和64位编译器和lib,include
+		findWdk func() //仅支持64位编译器和lib,include
+	}
+	bin struct { //todo.add.flags,give .h get filepath.dir into include dir
+		cc   string
+		lib  string
+		link string
+		asm  string
+	}
+	Config struct {
+		userIncludes []string
+		user64Libs   []string
+		user32Libs   []string
+
+		kernelIncludes []string
+		kernel64Libs   []string
+
+		Bins64   bin
+		Bins32   bin
+		msdia140 string
+	}
+)
