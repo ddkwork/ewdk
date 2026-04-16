@@ -80,7 +80,7 @@ jobs:
         run: |
           $env:WDKContentRoot = "E:\"
           $env:WDK_ROOT = "E:\"
-          & "$env:GITHUB_WORKSPACE\build.bat"
+          cmd /c "E:\SetupBuildEnv.cmd && cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release . && cmake --build build --config Release && dir /b build\demo\um-exe\*.exe build\demo\um-lib\*.lib build\demo\um-dll\*.dll build\demo\kernel\*.sys 2>nul"
 
   release:
     if: false
