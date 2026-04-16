@@ -63,7 +63,7 @@ if (-not $IS_CI) {
     setx /M WDKContentRoot "E:\"
     setx /M WDK_ROOT "E:\"
     Write-Host "WDKContentRoot set to: E:\" -ForegroundColor Green
-    Write-Host "WDK_ROOT set to: E:\EWDK" -ForegroundColor Green
+    Write-Host "WDK_ROOT set to: E:\" -ForegroundColor Green
     Write-Host ""
     Write-Host "Please restart your terminal for changes to take effect." -ForegroundColor Yellow
 }
