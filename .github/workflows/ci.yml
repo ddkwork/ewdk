@@ -45,9 +45,12 @@ jobs:
       - name: 安装 aria2
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "$env:TEMP\aria2.zip" -UseBasicParsing
+          $aria2Url = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+          Invoke-WebRequest -Uri $aria2Url -OutFile "$env:TEMP\aria2.zip" -UseBasicParsing
           Expand-Archive -Path "$env:TEMP\aria2.zip" -DestinationPath "$env:TEMP\aria2" -Force
-          Write-Host "aria2 installed"
+          Get-ChildItem "$env:TEMP\aria2" -Filter "aria2c.exe" -Recurse | Move-Item -Destination "$env:TEMP\aria2c.exe" -Force
+          Write-Host "aria2 installed: $env:TEMP\aria2c.exe"
+          & "$env:TEMP\aria2c.exe" --version
 
       - name: 检查本地缓存
         id: local-cache
@@ -63,9 +66,9 @@ jobs:
       - name: 下载EWDK ISO
         if: steps.local-cache.outputs.cache-hit != 'true'
         run: |
-          $cleanUrl = $env:EWDK_ISO_URL -replace '\s', ''
+          $cleanUrl = $env:EWDK_ISO_URL.Trim()
           Write-Host "Downloading EWDK ISO from: $cleanUrl"
-          & "$env:TEMP\aria2\aria2c.exe" -x16 -s16 --file-allocation=none -d "$env:TEMP" -o ewdk.iso "$cleanUrl"
+          & "$env:TEMP\aria2c.exe" -x16 -s16 --file-allocation=none -d "$env:TEMP" -o ewdk.iso $cleanUrl
           $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
           Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
 
