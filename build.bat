@@ -1,1 +1,1 @@
-cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=d:/ewdk/ninja.exe . && cmake --build build --config Release && dir /b build\demo\um-exe\*.exe build\demo\um-lib\*.lib build\demo\um-dll\*.dll build\demo\kernel\*.sys 2>nul
+cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=ninja.exe . && cmake --build build --config Release && dir /b build\demo\um-exe\*.exe build\demo\um-lib\*.lib build\demo\um-dll\*.dll build\demo\kernel\*.sys 2>nul
