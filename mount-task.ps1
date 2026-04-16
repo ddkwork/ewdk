@@ -60,9 +60,9 @@ Write-Host "  Start-ScheduledTask -TaskName '$TASK_NAME'" -ForegroundColor White
 if (-not $IS_CI) {
     Write-Host ""
     Write-Host "=== Setting Environment Variables ===" -ForegroundColor Cyan
-    setx /M WDKContentRoot "E:\EWDK"
+    setx /M WDKContentRoot "E:\"
     setx /M WDK_ROOT "E:\EWDK"
-    Write-Host "WDKContentRoot set to: E:\EWDK" -ForegroundColor Green
+    Write-Host "WDKContentRoot set to: E:\" -ForegroundColor Green
     Write-Host "WDK_ROOT set to: E:\EWDK" -ForegroundColor Green
     Write-Host ""
     Write-Host "Please restart your terminal for changes to take effect." -ForegroundColor Yellow
