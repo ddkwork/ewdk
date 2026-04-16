@@ -61,7 +61,7 @@ if (-not $IS_CI) {
     Write-Host ""
     Write-Host "=== Setting Environment Variables ===" -ForegroundColor Cyan
     setx /M WDKContentRoot "E:\"
-    setx /M WDK_ROOT "E:\EWDK"
+    setx /M WDK_ROOT "E:\"
     Write-Host "WDKContentRoot set to: E:\" -ForegroundColor Green
     Write-Host "WDK_ROOT set to: E:\EWDK" -ForegroundColor Green
     Write-Host ""
