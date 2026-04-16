@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
-include(D:/ewdk/ewdk.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/ewdk.cmake)
 
 add_subdirectory(demo/kernel)
 add_subdirectory(demo/um-lib)
