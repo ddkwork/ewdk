@@ -1,144 +1,83 @@
-name: Build EWDK Toolkit on Linux
+name: Build EWDK Demos on Windows
 
 on:
   push:
     branches: [ master ]
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 1'  # 每周一UTC0点运行
 
 jobs:
-  build-ewdk:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120  # 增加超时时间
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 设置Go环境
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.0-rc.1'
-
-      - name: 安装基础依赖
+      - name: 下载并安装Ninja
         run: |
-          sudo apt update
-          #          sudo apt install -y zstd fuseiso p7zip-full git build-essential aria2
-          sudo apt install -y  aria2
+          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip" -OutFile "$env:TEMP\ninja.zip"
+          Expand-Archive -Path "$env:TEMP\ninja.zip" -DestinationPath "$env:TEMP\ninja" -Force
+          Copy-Item "$env:TEMP\ninja\ninja.exe" "$env:TEMP\ninja.exe" -Force
+          Write-Host "Ninja version: $(& "$env:TEMP\ninja.exe" --version)"
 
-      - name: 安装最新版 zstd
-        run: |
-          # 安装最新版 zstd 支持高压缩级别
-          git clone https://github.com/facebook/zstd.git /tmp/zstd
-          cd /tmp/zstd
-          make -j$(nproc)
-          sudo make install
-          sudo ldconfig  # 更新共享库缓存
-
-      - name: 获取并设置EWDK URL
+      - name: 获取并设置EWDK ISO URL
         id: set-url
         run: go run scripts/get_ewdk_url.go
 
-      - name: 下载ISO
+      - name: 下载EWDK ISO
         run: |
-          # 清理URL中的不可见字符
-          CLEAN_URL=$(echo "${{ env.EWDK_ISO_URL }}" | tr -d '[:space:]')
-          echo "✅ 清理后下载URL: $CLEAN_URL"
-          
-          # 安全下载命令
-          aria2c \
-          -x 16 -s 64 -k 4M \
-          -j 16 \
-          -c "$CLEAN_URL" \
-          -d /tmp -o ewdk.iso \
-          --file-allocation=prealloc \
-          --retry-wait=1 \
-          --max-tries=3 \
-          --summary-interval=1 \
-          --check-certificate=false  # 避免SSL问题
-          
-          # 验证下载文件
-          FILE_SIZE=$(stat -c%s /tmp/ewdk.iso)
-          if [ $FILE_SIZE -lt 500000000 ]; then
-          echo "❌ 错误: 文件太小 (仅 $((FILE_SIZE/1000000)) MB)"
-          exit 1
-          fi
-          
-          # 计算实际下载速度
-          if [ -f /tmp/aria2.log ]; then
-          AVG_SPEED=$(grep 'Download Results' -A 2 /tmp/aria2.log | awk '/MiB\/s/ {print $3}')
-          echo "⚡ 平均下载速度: $AVG_SPEED MiB/s"
-          fi
-          
-          echo "✔️ ISO下载完成 ($((FILE_SIZE/1000000)) MB)"
-          echo "iso_path=/tmp/ewdk.iso" >> $GITHUB_ENV
-          
-          # 立即清除下载URL环境变量
-          echo "EWDK_ISO_URL=" >> $GITHUB_ENV
-          echo "✅ 已清除下载URL环境变量"
+          $cleanUrl = $env:EWDK_ISO_URL -replace '\s', ''
+          Write-Host "Downloading EWDK ISO from: $cleanUrl"
+          $ProgressPreference = 'SilentlyContinue'
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-WebRequest -Uri $cleanUrl -OutFile "$env:TEMP\ewdk.iso" -UseBasicParsing
+          $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
+          Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
 
       - name: 挂载ISO
         run: |
-          sudo mkdir -p /mnt/ewdk
-          sudo mount -o loop /tmp/ewdk.iso /mnt/ewdk
-          echo "✅ ISO挂载完成"
+          $mountResult = Mount-DiskImage -ImagePath "$env:TEMP\ewdk.iso" -PassThru
+          $driveLetter = ($mountResult | Get-Volume).DriveLetter
+          Write-Host "ISO mounted as drive: ${driveLetter}:"
+          Write-Host "EWDK drive letter: ${driveLetter}:" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: 安装Go模块
+      - name: 设置WDK环境并构建
         run: |
-          go mod tidy
+          $ewdkDrive = $env:EWDK_DRIVE_LETTER.Trim()
+          $ewdkPath = "${ewdkDrive}:\EWDK"
+          Write-Host "EWDK path: $ewdkPath"
 
-      - name: 运行提取程序
-        timeout-minutes: 30
+          # 复制EWDK内容到工作目录作为WDK
+          $wdkContent = "$env:GITHUB_WORKSPACE\wdk_content"
+          New-Item -ItemType Directory -Force -Path $wdkContent | Out-Null
+          Copy-Item -Path "$ewdkPath\*" -Destination $wdkContent -Recurse -Force
+          Write-Host "EWDK content copied to: $wdkContent"
+
+          # 设置WDK环境变量
+          Write-Host "WDKContentRoot=$wdkContent" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "WDK_ROOT=$wdkContent" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: 运行build.bat
         run: |
-          go run .
+          $env:WDKContentRoot = "$env:GITHUB_WORKSPACE\wdk_content"
+          $env:WDK_ROOT = "$env:GITHUB_WORKSPACE\wdk_content"
+          & "$env:GITHUB_WORKSPACE\build.bat"
 
-      - name: 创建wdk压缩包
-        run: |
-          # 压缩目录 (使用最新版zstd)
-          tar cf - dist/wdk | zstd --ultra -22 -T0 -o /tmp/wdk.tar.zst
-          
-          # 验证压缩包
-          ARCHIVE_SIZE=$(stat -c%s /tmp/wdk.tar.zst)
-          echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
-          echo "wdk_path=/tmp/wdk.tar.zst" >> $GITHUB_ENV
-
-      - name: 上传wdk成品
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: wdk.tar.zst
-          path: ${{ env.wdk_path }}
+          name: ewdk-build-output
+          path: |
+            build/demo/um-exe/*.exe
+            build/demo/um-lib/*.lib
+            build/demo/um-dll/*.dll
+            build/demo/kernel/*.sys
           retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
 
-      - name: 创建sdk压缩包
+      - name: 卸载ISO
+        if: always()
         run: |
-          # 压缩目录 (使用最新版zstd)
-          tar cf - dist/sdk | zstd --ultra -22 -T0 -o /tmp/sdk.tar.zst
-          
-          # 验证压缩包
-          ARCHIVE_SIZE=$(stat -c%s /tmp/sdk.tar.zst)
-          echo "✔️ 压缩完成: $((ARCHIVE_SIZE/1000000)) MB"
-          echo "sdk_path=/tmp/sdk.tar.zst" >> $GITHUB_ENV
-
-      - name: 上传sdk成品
-        uses: actions/upload-artifact@v4
-        with:
-          name: sdk.tar.zst
-          path: ${{ env.sdk_path }}
-          retention-days: 7
-          compression-level: 0  # 避免GitHub二次压缩
-
-
-      - name: 清理资源
-        run: |
-          # 卸载ISO
-          sudo umount /mnt/ewdk || true
-          
-          # 删除临时文件
-          sudo rm -rf /mnt/ewdk
-          rm -f /tmp/ewdk.iso
-          rm -f /tmp/wdk.tar.zst
-          rm -f /tmp/sdk.tar.zst
-          sudo rm -rf /tmp/zstd
-          echo "✅ 资源清理完成"
+          Dismount-DiskImage -ImagePath "$env:TEMP\ewdk.iso" -Confirm:$false
+          Remove-Item "$env:TEMP\ewdk.iso" -Force -ErrorAction SilentlyContinue
+          Write-Host "Cleanup completed"
