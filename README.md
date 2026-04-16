@@ -11,7 +11,7 @@ Windows Driver Kit (WDK) demo project with CMake build system.
 
 ## Prerequisites
 
-- Windows Driver Kit (WDK) installed or EWDK ISO mounted
+- Windows Driver Kit (WDK) installed (EWDK ISO mount handled by `mount-task.ps1`)
 - CMake 3.22+
 - Ninja build tool (if not in PATH, place `ninja.exe` in project root)
 - Visual Studio Build Tools (included in EWDK)
