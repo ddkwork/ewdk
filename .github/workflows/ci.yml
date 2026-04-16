@@ -1,24 +1,43 @@
-name: Build EWDK Demos on Windows
+name: build-ewdk
 
 on:
   push:
     branches: [ master ]
   workflow_dispatch:
+  tags:
+    - 'v*'
+
+env:
+  BUILD_OUTPUT_DIR: ewdk-build
+  RELEASE_ZIP_FILE_NAME: ewdk
 
 jobs:
+  test:
+    name: Test build configuration
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 安装Ninja
+        run: |
+          Copy-Item "$env:GITHUB_WORKSPACE\ninja.exe" "$env:TEMP\ninja.exe" -Force
+          Write-Host "Ninja version: $(& "$env:TEMP\ninja.exe" --version)"
+
   build:
+    needs: test
     runs-on: windows-latest
     timeout-minutes: 60
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: 下载并安装Ninja
+      - name: 安装Ninja
         run: |
-          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip" -OutFile "$env:TEMP\ninja.zip"
-          Expand-Archive -Path "$env:TEMP\ninja.zip" -DestinationPath "$env:TEMP\ninja" -Force
-          Copy-Item "$env:TEMP\ninja\ninja.exe" "$env:TEMP\ninja.exe" -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\ninja.exe" "$env:TEMP\ninja.exe" -Force
           Write-Host "Ninja version: $(& "$env:TEMP\ninja.exe" --version)"
 
       - name: 获取并设置EWDK ISO URL
@@ -41,33 +60,84 @@ jobs:
 
       - name: 设置WDK环境并构建
         run: |
-          $ewdkDrive = "E"
-          $ewdkPath = "${ewdkDrive}:\EWDK"
-          Write-Host "EWDK path: $ewdkPath"
-
-          $wdkContent = "$env:GITHUB_WORKSPACE\wdk_content"
-          New-Item -ItemType Directory -Force -Path $wdkContent | Out-Null
-          Copy-Item -Path "$ewdkPath\*" -Destination $wdkContent -Recurse -Force
-          Write-Host "EWDK content copied to: $wdkContent"
-
-          $env:WDKContentRoot = $wdkContent
-          $env:WDK_ROOT = $wdkContent
+          $env:WDKContentRoot = "E:\EWDK"
+          $env:WDK_ROOT = "E:\EWDK"
           & "$env:GITHUB_WORKSPACE\build.bat"
 
-      - name: 上传构建产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: ewdk-build-output
-          path: |
-            build/demo/um-exe/*.exe
-            build/demo/um-lib/*.lib
-            build/demo/um-dll/*.dll
-            build/demo/kernel/*.sys
-          retention-days: 7
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
 
-      - name: 卸载ISO
-        if: always()
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 获取 commit 信息
+        id: commit_info
         run: |
-          Dismount-DiskImage -ImagePath "$env:TEMP\ewdk.iso" -Confirm:$false
-          Remove-Item "$env:TEMP\ewdk.iso" -Force -ErrorAction SilentlyContinue
-          Write-Host "Cleanup completed"
+          echo "commit=${{ github.sha }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "date=$(Get-Date -Format 'yyyy-MM-dd')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: 创建源码压缩包
+        run: |
+          Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip" -Force
+          Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip"
+
+      - name: 发布
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip
+          body: |
+            EWDK Build - ${{ github.ref_name }}
+
+            Build Date: ${{ steps.commit_info.outputs.date }}
+            Commit: ${{ steps.commit_info.outputs.commit }}
+            Branch: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.tk }}
+
+  deploy-latest:
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 获取 commit 信息
+        id: commit_info
+        run: |
+          echo "commit=${{ github.sha }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "date=$(Get-Date -Format 'yyyy-MM-dd')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: 创建源码压缩包
+        run: |
+          Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-latest.zip" -Force
+          Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-latest.zip"
+
+      - name: 发布 Latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: EWDK - Latest Build
+          files: |
+            ${{ env.RELEASE_ZIP_FILE_NAME }}-latest.zip
+          body: |
+            EWDK - Latest Build
+
+            Build Date: ${{ steps.commit_info.outputs.date }}
+            Commit: ${{ steps.commit_info.outputs.commit }}
+            Branch: ${{ github.ref_name }}
+
+            This release is automatically updated with each successful master build.
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
