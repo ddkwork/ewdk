@@ -12,7 +12,7 @@ import (
 	"github.com/ddkwork/golibrary/std/stream"
 )
 
-func main() {
+func main1() {
 	Walk()
 }
 
@@ -24,10 +24,8 @@ const (
 )
 
 var (
-	//go:embed wdk.cmake
 	wdkCmake string
 
-	//go:embed sdk.cmake
 	sdkCmake string
 )
 

@@ -56,18 +56,3 @@ Write-Host "Triggers: At logon (delay 10s)" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "To run now without waiting:" -ForegroundColor Cyan
 Write-Host "  Start-ScheduledTask -TaskName '$TASK_NAME'" -ForegroundColor White
-
-if (-not $IS_CI) {
-    Write-Host ""
-    Write-Host "=== Setting Environment Variables ===" -ForegroundColor Cyan
-    setx /M CC "cl.exe"
-    setx /M CXX "cl.exe"
-    setx /M WDKContentRoot "E:\"
-    setx /M WDK_ROOT "E:\"
-    Write-Host "CC set to: cl.exe" -ForegroundColor Green
-    Write-Host "CXX set to: cl.exe" -ForegroundColor Green
-    Write-Host "WDKContentRoot set to: E:\" -ForegroundColor Green
-    Write-Host "WDK_ROOT set to: E:\" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Please restart your terminal for changes to take effect." -ForegroundColor Yellow
-}
