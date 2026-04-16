@@ -1,6 +1,3 @@
-
-// #include "driver.h"
-
 #include <ntifs.h>
 #include <intrin.h>
 
