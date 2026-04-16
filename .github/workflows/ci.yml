@@ -58,7 +58,7 @@ jobs:
 
       - name: 复制ewdk.cmake到EWDK
         run: |
-          Copy-Item "$env:GITHUB_WORKSPACE\ewdk.cmake" "E:\EWDK\ewdk.cmake" -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\ewdk.cmake" "D:\EWDK\ewdk.cmake" -Force
           Write-Host "ewdk.cmake copied to E:\EWDK"
 
       - name: 设置WDK环境并构建
