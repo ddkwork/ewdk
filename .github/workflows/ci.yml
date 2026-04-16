@@ -37,31 +37,21 @@ jobs:
 
       - name: 挂载ISO
         run: |
-          $mountResult = Mount-DiskImage -ImagePath "$env:TEMP\ewdk.iso" -PassThru
-          $driveLetter = ($mountResult | Get-Volume).DriveLetter
-          Write-Host "ISO mounted as drive: ${driveLetter}:"
-          Write-Host "EWDK drive letter: ${driveLetter}:" | Out-File -FilePath $env:GITHUB_ENV -Append
+          & "$env:GITHUB_WORKSPACE\mount-task.ps1"
 
       - name: 设置WDK环境并构建
         run: |
-          $ewdkDrive = $env:EWDK_DRIVE_LETTER.Trim()
+          $ewdkDrive = "E"
           $ewdkPath = "${ewdkDrive}:\EWDK"
           Write-Host "EWDK path: $ewdkPath"
 
-          # 复制EWDK内容到工作目录作为WDK
           $wdkContent = "$env:GITHUB_WORKSPACE\wdk_content"
           New-Item -ItemType Directory -Force -Path $wdkContent | Out-Null
           Copy-Item -Path "$ewdkPath\*" -Destination $wdkContent -Recurse -Force
           Write-Host "EWDK content copied to: $wdkContent"
 
-          # 设置WDK环境变量
-          Write-Host "WDKContentRoot=$wdkContent" | Out-File -FilePath $env:GITHUB_ENV -Append
-          Write-Host "WDK_ROOT=$wdkContent" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: 运行build.bat
-        run: |
-          $env:WDKContentRoot = "$env:GITHUB_WORKSPACE\wdk_content"
-          $env:WDK_ROOT = "$env:GITHUB_WORKSPACE\wdk_content"
+          $env:WDKContentRoot = $wdkContent
+          $env:WDK_ROOT = $wdkContent
           & "$env:GITHUB_WORKSPACE\build.bat"
 
       - name: 上传构建产物
