@@ -1,10 +1,21 @@
 $ErrorActionPreference = "Stop"
 
-$EWDK_ISO_PATH = "d:\ewdk\EWDK_br_release_28000_251103-1709.iso"
-$MOUNT_LETTER = "E:"
 $TASK_NAME = "EWDK_Mount"
+$MOUNT_LETTER = "E:"
+$GITHUB_WORKSPACE = $env:GITHUB_WORKSPACE
 
-Write-Host "=== EWDK Auto-Mount Setup ===" -ForegroundColor Cyan
+if ($GITHUB_WORKSPACE) {
+    $EWDK_ISO_PATH = "$env:TEMP\ewdk.iso"
+    $IS_CI = $true
+    Write-Host "=== CI Environment Detected ===" -ForegroundColor Cyan
+    Write-Host "ISO path: $EWDK_ISO_PATH" -ForegroundColor Yellow
+} else {
+    $EWDK_ISO_PATH = "d:\ewdk\EWDK_br_release_28000_251103-1709.iso"
+    $IS_CI = $false
+    Write-Host "=== Local Environment ===" -ForegroundColor Cyan
+    Write-Host "ISO path: $EWDK_ISO_PATH" -ForegroundColor Yellow
+}
+
 Write-Host ""
 
 if (-not (Test-Path $EWDK_ISO_PATH)) {
@@ -45,3 +56,14 @@ Write-Host "Triggers: At logon (delay 10s)" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "To run now without waiting:" -ForegroundColor Cyan
 Write-Host "  Start-ScheduledTask -TaskName '$TASK_NAME'" -ForegroundColor White
+
+if (-not $IS_CI) {
+    Write-Host ""
+    Write-Host "=== Setting Environment Variables ===" -ForegroundColor Cyan
+    setx /M WDKContentRoot "E:\EWDK"
+    setx /M WDK_ROOT "E:\EWDK"
+    Write-Host "WDKContentRoot set to: E:\EWDK" -ForegroundColor Green
+    Write-Host "WDK_ROOT set to: E:\EWDK" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Please restart your terminal for changes to take effect." -ForegroundColor Yellow
+}
