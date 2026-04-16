@@ -4,7 +4,7 @@ Windows Driver Kit (WDK) demo project with CMake build system.
 
 ## Features
 
-- **Kernel Driver**: `KernelDriverDemo.sys` - Simple kernel driver
+- **Kernel Driver**: `KernelDriverDemo.sys` - Simple kernel driver (auto-signed with test certificate)
 - **User-mode EXE**: `UmExeDemo.exe` - Console application
 - **Static Library**: `UmLibDemo.lib` - User-mode static library
 - **Dynamic Library**: `UmDllDemo.dll` - User-mode DLL
@@ -109,6 +109,8 @@ Set in environment or CMake cache:
 |----------|---------|-------------|
 | `WDKContentRoot` | Auto-detected | WDK installation root |
 | `WDK_WINVER` | `0x0601` | Target Windows version (Win7) |
+| `WDK_TEST_SIGN` | `ON` | Enable automatic test signing for kernel drivers |
+| `WDK_TEST_SIGN_NAME` | `HyperDbgTest` | Certificate name for test signing |
 
 ## Output Files
 

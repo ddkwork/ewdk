@@ -86,6 +86,8 @@ endif()
 
 set(WDK_WINVER "0x0601" CACHE STRING "Default WINVER for WDK targets")
 set(WDK_NTDDI_VERSION "" CACHE STRING "Specified NTDDI_VERSION for WDK targets if needed")
+set(WDK_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
+set(WDK_TEST_SIGN_NAME "HyperDbgTest" CACHE STRING "Certificate name for test signing")
 
 set(WDK_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
 file(WRITE ${WDK_ADDITIONAL_FLAGS_FILE} "#pragma runtime_checks(\"suc\", off)")
@@ -195,6 +197,20 @@ function(wdk_add_driver _target)
         elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
             set_property(TARGET ${_target} APPEND_STRING PROPERTY LINK_FLAGS "/ENTRY:GsDriverEntry")
         endif()
+    endif()
+
+    if(WDK_TEST_SIGN)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+            set(WDK_SIGNTOOL_PATH "$ENV{WDKContentRoot}/bin/${WDK_VERSION}/x86/signtool.exe")
+        else()
+            set(WDK_SIGNTOOL_PATH "$ENV{WDKContentRoot}/bin/${WDK_VERSION}/x64/signtool.exe")
+        endif()
+        add_custom_command(TARGET ${_target} POST_BUILD
+            COMMAND ${WDK_SIGNTOOL_PATH} sign /fd SHA256 /s My /n ${WDK_TEST_SIGN_NAME} /t http://timestamp.digicert.com $<TARGET_FILE:${_target}>
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Signing driver with test certificate: ${WDK_TEST_SIGN_NAME}"
+            VERBATIM
+        )
     endif()
 endfunction()
 
