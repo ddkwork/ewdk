@@ -76,11 +76,6 @@ jobs:
         run: |
           & "$env:GITHUB_WORKSPACE\mount-task.ps1"
 
-      - name: 复制ewdk.cmake到EWDK
-        run: |
-          Copy-Item "$env:GITHUB_WORKSPACE\ewdk.cmake" "D:\EWDK\ewdk.cmake" -Force
-          Write-Host "ewdk.cmake copied to E:\EWDK"
-
       - name: 设置WDK环境并构建
         run: |
           $env:WDKContentRoot = "E:\EWDK"
