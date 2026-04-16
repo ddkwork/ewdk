@@ -78,8 +78,8 @@ jobs:
 
       - name: 设置WDK环境并构建
         run: |
-          $env:WDKContentRoot = "E:\EWDK"
-          $env:WDK_ROOT = "E:\EWDK"
+          $env:WDKContentRoot = "E:\"
+          $env:WDK_ROOT = "E:\"
           & "$env:GITHUB_WORKSPACE\build.bat"
 
   release:
