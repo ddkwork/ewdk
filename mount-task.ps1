@@ -56,3 +56,7 @@ Write-Host "Triggers: At logon (delay 10s)" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "To run now without waiting:" -ForegroundColor Cyan
 Write-Host "  Start-ScheduledTask -TaskName '$TASK_NAME'" -ForegroundColor White
+
+
+setx /M WDKContentRoot "E:\Program Files\Windows Kits\10"
+setx /M WDK_ROOT "E:\Program Files\Windows Kits\10"

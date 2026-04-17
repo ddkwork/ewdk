@@ -1,11 +1,14 @@
 package main
 
 import (
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/ddkwork/golibrary/std/mylog"
+	"github.com/ddkwork/golibrary/std/safemap"
 	"github.com/ddkwork/golibrary/std/stream"
 	"github.com/ddkwork/golibrary/std/stream/net/httpClient"
-	"os"
-	"strings"
 )
 
 func main() {
@@ -16,20 +19,34 @@ func GetIsoLink() string {
 	c := httpClient.New() //.SetDebug(true)
 
 	b := c.Get("https://learn.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2022").Request().Buffer
-	latestUrl := ""
+	m := safemap.M[int64, string]{}
 	for s := range strings.Lines(b.String()) {
 		if strings.Contains(s, "Accept license terms") {
 			before, after, found := strings.Cut(s, `" data-linktype`)
 			if found {
 				before, after, found = strings.Cut(before, `href="`)
-				latestUrl = after
-				break
+				_, idStr, f := strings.Cut(after, "linkid=")
+				if f {
+					id := mylog.Check2(strconv.ParseInt(idStr, 10, 64))
+					m.Set(id, after)
+				}
 			}
 		}
 	}
+	latest := int64(0)
+	latestUrl := ""
+	keys := m.Keys()
+	for _, id := range keys {
+		url, _ := m.Get(id)
+		if id > latest {
+			latest = id
+			latestUrl = url
+		}
+	}
+	mylog.Struct(latest)
 	c.Get(latestUrl).StopCode(302).Request()
 	iso := c.Response.Header.Get("Location")
-
+	mylog.Success(iso)
 	if githubEnv := os.Getenv("GITHUB_ENV"); githubEnv != "" {
 		g := stream.NewGeneratedFile()
 		g.P()
