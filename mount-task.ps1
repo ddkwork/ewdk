@@ -23,6 +23,16 @@ if (-not (Test-Path $EWDK_ISO_PATH)) {
     exit 1
 }
 
+function Get-MountedDriveLetter {
+    param([string]$ImagePath)
+    $diskImg = Get-DiskImage -ImagePath $ImagePath -ErrorAction SilentlyContinue
+    if ($diskImg -and $diskImg.Attached) {
+        $vol = Get-Volume -DiskImage $diskImg -ErrorAction SilentlyContinue
+        if ($vol) { return $vol.DriveLetter }
+    }
+    return $null
+}
+
 $existingTask = Get-ScheduledTask -TaskName $TASK_NAME -ErrorAction SilentlyContinue
 if ($existingTask) {
     Write-Host "Removing existing task..." -ForegroundColor Yellow
@@ -35,13 +45,8 @@ $trigger.Delay = "PT10S"
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument @"
 -ExecutionPolicy Bypass -Command "
 `$isoPath = '$EWDK_ISO_PATH'
-`$mountLetter = '$MOUNT_LETTER'
-`$alreadyMounted = `$false
-try {
-    `$vol = Get-Volume -DriveLetter `$mountLetter.Replace(':', '') -ErrorAction SilentlyContinue
-    if (`$vol -and `$vol.DriveType -eq 'CD-ROM') { `$alreadyMounted = `$true }
-} catch {}
-if (-not `$alreadyMounted) {
+`$diskImg = Get-DiskImage -ImagePath `$isoPath -ErrorAction SilentlyContinue
+if (-not (`$diskImg -and `$diskImg.Attached)) {
     Mount-DiskImage -ImagePath `$isoPath -PassThru | Out-Null
     Write-Host 'EWDK mounted'
 }
@@ -58,5 +63,18 @@ Write-Host "To run now without waiting:" -ForegroundColor Cyan
 Write-Host "  Start-ScheduledTask -TaskName '$TASK_NAME'" -ForegroundColor White
 
 
-setx /M WDKContentRoot "E:\Program Files\Windows Kits\10"
-setx /M WDK_ROOT "E:\Program Files\Windows Kits\10"
+$mountedDrive = Get-MountedDriveLetter -ImagePath $EWDK_ISO_PATH
+if ($mountedDrive) {
+    Write-Host "EWDK is mounted at: ${mountedDrive}:" -ForegroundColor Green
+    $wdkRoot = "${mountedDrive}:\Program Files\Windows Kits\10"
+    $setupEnvCmd = "${mountedDrive}:\BuildEnv\SetupBuildEnv.cmd"
+    setx /M WDKContentRoot $wdkRoot
+    setx /M WDK_ROOT $wdkRoot
+    setx /M EWDKSetupEnvCmd $setupEnvCmd
+    Write-Host "setx /M WDKContentRoot `"$wdkRoot`"" -ForegroundColor Cyan
+    Write-Host "setx /M WDK_ROOT `"$wdkRoot`"" -ForegroundColor Cyan
+    Write-Host "setx /M EWDKSetupEnvCmd `"$setupEnvCmd`"" -ForegroundColor Cyan
+} else {
+    Write-Host "Warning: Could not detect mounted drive letter. setx commands skipped." -ForegroundColor Yellow
+    Write-Host "Manually run after mounting: setx /M WDKContentRoot `"E:\Program Files\Windows Kits\10`"" -ForegroundColor Yellow
+}

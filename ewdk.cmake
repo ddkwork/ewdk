@@ -1,4 +1,6 @@
-execute_process(COMMAND cmd /c "call E:\\BuildEnv\\SetupBuildEnv.cmd amd64")
+set(EWDK_SETUP_ENV_CMD "$ENV{EWDKSetupEnvCmd}")
+
+execute_process(COMMAND cmd /c "call ${EWDK_SETUP_ENV_CMD} amd64")
 # Redistribution and use is allowed under the OSI-approved 3-clause BSD license.
 # Copyright (c) 2018 Sergey Podobry (sergey.podobry at gmail.com). All rights reserved.
 
