@@ -38,10 +38,6 @@ jobs:
           Copy-Item "$env:GITHUB_WORKSPACE\ninja.exe" "$env:TEMP\ninja.exe" -Force
           Write-Host "Ninja version: $(& "$env:TEMP\ninja.exe" --version)"
 
-      - name: 获取并设置EWDK ISO URL
-        id: set-url
-        run: go run scripts/get_ewdk_url.go
-
       - name: 安装 aria2
         run: |
           $ProgressPreference = 'SilentlyContinue'
@@ -66,6 +62,8 @@ jobs:
       - name: 下载EWDK ISO
         if: steps.local-cache.outputs.cache-hit != 'true'
         run: |
+          # 获取 EWDK ISO URL
+          go run scripts/get_ewdk_url.go
           $cleanUrl = $env:EWDK_ISO_URL.Trim()
           Write-Host "Downloading EWDK ISO from: $cleanUrl"
           & "$env:TEMP\aria2c.exe" -x16 -s16 --file-allocation=none -d "$env:TEMP" -o ewdk.iso $cleanUrl
