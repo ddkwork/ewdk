@@ -72,13 +72,9 @@ jobs:
           $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
           Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
 
-      - name: 挂载ISO
+      - name: 挂载ISO并构建
         run: |
-          & "$env:GITHUB_WORKSPACE\mount-task.ps1"
-
-      - name: 构建
-        run: |
-          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=ninja.exe . && cmake --build build --config Release 
+          go run .
 
   release:
     if: false
