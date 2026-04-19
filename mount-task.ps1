@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v INCLUDE /f
+reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v LIB /f
+
 $TASK_NAME = "EWDK_Mount"
 $MOUNT_LETTER = "E:"
 $GITHUB_WORKSPACE = $env:GITHUB_WORKSPACE

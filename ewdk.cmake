@@ -1,6 +1,3 @@
-set(EWDK_SETUP_ENV_CMD "$ENV{EWDKSetupEnvCmd}")
-
-execute_process(COMMAND cmd /c "call ${EWDK_SETUP_ENV_CMD} amd64")
 # Redistribution and use is allowed under the OSI-approved 3-clause BSD license.
 # Copyright (c) 2018 Sergey Podobry (sergey.podobry at gmail.com). All rights reserved.
 
@@ -272,6 +269,7 @@ function(wdk_add_executable _target)
         set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
     endif()
 
+    link_directories("$ENV{WDKContentRoot}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
     target_link_libraries(${_target} kernel32.lib user32.lib)
 endfunction()
 
@@ -294,6 +292,7 @@ function(um_library _target)
         "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
         "${WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
         )
+    link_directories("$ENV{WDKContentRoot}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
 endfunction()
 
 function(um_dll _target)
@@ -317,6 +316,6 @@ function(um_dll _target)
         "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
         "${WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
         )
-
+    link_directories("$ENV{WDKContentRoot}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
     target_link_libraries(${_target} kernel32.lib)
 endfunction()
