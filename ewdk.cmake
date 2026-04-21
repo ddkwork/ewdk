@@ -35,14 +35,15 @@
 #
 
 if(DEFINED ENV{WDKContentRoot})
+    string(REGEX REPLACE "[\\/]$" "" _WDK_ROOT "$ENV{WDKContentRoot}")
     file(GLOB WDK_NTDDK_FILES
-        "$ENV{WDKContentRoot}/Include/*/km/ntddk.h" # WDK 10
-        "$ENV{WDKContentRoot}/Include/km/ntddk.h" # WDK 8.0, 8.1
+        "${_WDK_ROOT}/Include/*/km/ntddk.h"
+        "${_WDK_ROOT}/Include/km/ntddk.h"
     )
 else()
     file(GLOB WDK_NTDDK_FILES
-        "C:/Program Files*/Windows Kits/*/Include/*/km/ntddk.h" # WDK 10
-        "C:/Program Files*/Windows Kits/*/Include/km/ntddk.h" # WDK 8.0, 8.1
+        "C:/Program Files*/Windows Kits/*/Include/*/km/ntddk.h"
+        "C:/Program Files*/Windows Kits/*/Include/km/ntddk.h"
     )
 endif()
 
@@ -84,9 +85,14 @@ if(NOT WDK_FIND_QUIETLY)
     message(STATUS "WDK_VERSION: " ${WDK_VERSION})
 endif()
 
+string(REGEX REPLACE "[\\/]$" "" _WDK_ROOT "${WDK_ROOT}")
+
+set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
+set(CMAKE_CXX_COMPILER_WORKS 1 CACHE INTERNAL "")
+
 set(WDK_WINVER "0x0601" CACHE STRING "Default WINVER for WDK targets")
 set(WDK_NTDDI_VERSION "" CACHE STRING "Specified NTDDI_VERSION for WDK targets if needed")
-set(WDK_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
+set(WDK_TEST_SIGN OFF CACHE BOOL "Enable test signing for drivers")
 set(WDK_TEST_SIGN_NAME "HyperDbgTest" CACHE STRING "Certificate name for test signing")
 
 set(WDK_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
@@ -106,18 +112,29 @@ set(WDK_COMPILE_FLAGS
 set(WDK_COMPILE_DEFINITIONS "WINNT=1")
 set(WDK_COMPILE_DEFINITIONS_DEBUG "MSC_NOOPT;DEPRECATE_DDK_FUNCTIONS=1;DBG=1")
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    list(APPEND WDK_COMPILE_DEFINITIONS "_X86_=1;i386=1;STD_CALL")
-    set(WDK_PLATFORM "x86")
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
-    list(APPEND WDK_COMPILE_DEFINITIONS "_ARM64_;ARM64;_USE_DECLSPECS_FOR_SAL=1;STD_CALL")
-    set(WDK_PLATFORM "arm64")
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    list(APPEND WDK_COMPILE_DEFINITIONS "_AMD64_;AMD64")
-    set(WDK_PLATFORM "x64")
-else()
-    message(FATAL_ERROR "Unsupported architecture")
+if(DEFINED CMAKE_SIZEOF_VOID_P)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        list(APPEND WDK_COMPILE_DEFINITIONS "_X86_=1;i386=1;STD_CALL")
+        set(WDK_PLATFORM "x86")
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
+        list(APPEND WDK_COMPILE_DEFINITIONS "_ARM64_;ARM64;_USE_DECLSPECS_FOR_SAL=1;STD_CALL")
+        set(WDK_PLATFORM "arm64")
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        list(APPEND WDK_COMPILE_DEFINITIONS "_AMD64_;AMD64")
+        set(WDK_PLATFORM "x64")
+    else()
+        message(FATAL_ERROR "Unsupported architecture")
+    endif()
 endif()
+if(NOT WDK_PLATFORM)
+    set(WDK_PLATFORM "x64")
+    list(APPEND WDK_COMPILE_DEFINITIONS "_AMD64_;AMD64")
+endif()
+
+set(_UCRT_INC "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/ucrt")
+set(_UCRT_LIB "${_WDK_ROOT}/Lib/${WDK_VERSION}/ucrt/${WDK_PLATFORM}")
+list(APPEND CMAKE_INCLUDE_PATH ${_UCRT_INC})
+list(APPEND CMAKE_LIBRARY_PATH ${_UCRT_LIB})
 
 string(CONCAT WDK_LINK_FLAGS
     "/MANIFEST:NO " #
@@ -126,6 +143,7 @@ string(CONCAT WDK_LINK_FLAGS
     "/INCREMENTAL:NO " #
     "/OPT:ICF " #
     "/SUBSYSTEM:NATIVE " #
+    "/ENTRY:DriverEntry " #
     "/MERGE:_TEXT=.text;_PAGE=PAGE " #
     "/NODEFAULTLIB " # do not link default CRT
     "/SECTION:INIT,d " #
@@ -259,8 +277,9 @@ function(wdk_add_executable _target)
     endif()
 
     target_include_directories(${_target} PRIVATE
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        ${_UCRT_INC}
         )
 
     if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
@@ -269,7 +288,8 @@ function(wdk_add_executable _target)
         set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
     endif()
 
-    link_directories("$ENV{WDKContentRoot}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
+    target_link_options(${_target} PRIVATE "/LIBPATH:${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
+    target_link_options(${_target} PRIVATE "/LIBPATH:${_UCRT_LIB}")
     target_link_libraries(${_target} kernel32.lib user32.lib)
 endfunction()
 
@@ -289,10 +309,12 @@ function(um_library _target)
     endif()
 
     target_include_directories(${_target} PRIVATE
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        ${_UCRT_INC}
         )
-    link_directories("$ENV{WDKContentRoot}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
+    target_link_options(${_target} PRIVATE "/LIBPATH:${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
+    target_link_options(${_target} PRIVATE "/LIBPATH:${_UCRT_LIB}")
 endfunction()
 
 function(um_dll _target)
@@ -313,9 +335,11 @@ function(um_dll _target)
     endif()
 
     target_include_directories(${_target} PRIVATE
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        ${_UCRT_INC}
         )
-    link_directories("$ENV{WDKContentRoot}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
+    target_link_options(${_target} PRIVATE "/LIBPATH:${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
+    target_link_options(${_target} PRIVATE "/LIBPATH:${_UCRT_LIB}")
     target_link_libraries(${_target} kernel32.lib)
 endfunction()

@@ -24,12 +24,14 @@ EWDK 是 ISO 镜像形式发布的，传统使用方式痛苦：
 ```
 d:\ewdk\
 ├── env.go              # EnvManager 接口 + RegistryEnvManager 实现
+│                       #   - Env* 常量组: 11 个环境变量名常量（消除重复字符串）
 │                       #   - List/Delete/Set: 系统环境变量 CRUD
-│                       #   - CaptureDiff: 执行 SetupBuildEnv.cmd，返回完整 diff
-│                       #   - FillCMake: 从新增变量推断 CMake 相关映射
+│                       #   - runSetupBuildEnv: 执行 SetupBuildEnv.cmd amd64，返回 ewdkEnv
+│                       #   - getEwdkDriveLetter: 读 WDKContentRoot 环境变量获取盘符
 │                       #   - MountISO/UnmountISO: ISO 挂载卸载
 │                       #   - CleanInvalidVars: 清理无效环境变量
-├── mount-task.go       # 主入口：完整的挂载→清理→diff→设置→构建流程
+├── main.go             # 主入口：完整的挂载→清理→diff→设置→构建流程
+│                       #   - setEwdkEnvToSystem: 将 ewdkEnv 写入系统注册表
 ├── clean.go            # 从 ISO 提取工具链到 dist/ 目录（CI 打包用）
 ├── ewdk.cmake          # CMake FindWDK 模块（kernel + user-mode 函数）
 ├── CMakeLists.txt      # 根 CMake（include ewdk.cmake）
@@ -44,19 +46,34 @@ d:\ewdk\
 
 ## 关键数据结构
 
-### EnvDiff — 带完整值的差异结果（不是裸 key 列表）
+### ewdkEnv — SetupBuildEnv.cmd 执行结果（已内置 amd64 参数）
 
 ```go
-type EnvVarDelta struct {
-    Name     string  // 变量名
-    OldValue string  // 改之前的值
-    NewValue string  // 改之后的值
+type ewdkEnv struct {
+    WindowsTargetPlatformVersion string  // WDK 目标平台版本号
+    WDKContentRoot               string  // WDK 内容根目录（如 F:\）
+    BuildLabSetupRoot            string  // 构建实验室根目录
+    VSINSTALLDIR                 string  // VS 安装目录
+    INCLUDE                      []string // 头文件搜索路径（含 DIA/KM/UM/Shared/KMDF）
+    LIB                          []string // 库文件搜索路径（含 x64）
+    WDKBinRoot                   string  // WDK Bin 根目录
+    DiaRoot                      string  // DIA SDK 目录
+    VCToolsInstallDir            string  // VC 工具安装目录
+    CC                           string  // x64 cl.exe 完整路径（强制覆盖）
 }
+```
 
-type EnvDiff struct {
-    Added   map[string]string  // name → new_value     新增变量（直接喂 cmake）
-    Changed []EnvVarDelta      // 变更详情（old+new）   同步更新时知道改了啥
-    Removed map[string]string  // name → old_value     被删变量的最后值
+### EnvVar — 环境变量条目（含校验信息）
+
+```go
+type EnvVar struct {
+    Name       string  // 变量名
+    Value      string  // 值
+    Type       string  // 注册表类型（SZ, EXPAND_SZ 等）
+    Valid      bool    // 路径是否存在
+    IsPath     bool    // 是否看起来像路径
+    IsCompound bool    // 是否为复合路径（PATH, INCLUDE, LIB 等）
+    Reason     string  // 无效原因
 }
 ```
 
@@ -64,205 +81,124 @@ type EnvDiff struct {
 
 ```go
 type EnvManager interface {
-    List() (EnvVarList, error)
-    Delete(name string) error
-    Set(name, value string) error
-    CaptureDiff(setupCmd string) (*EnvDiff, error)
-    FillCMake(newVars map[string]string) (map[string]string, error)
-    CreateStartupScript(content, name string) (string, error)
-    Expand(value string) (string, error)
-    GetMountedDriveLetter(isoPath string) string
-    MountISO(isoPath string) (string, error)
-    UnmountISO(isoPath string) error
-    CleanInvalidVars() (int, error)
+    List() (EnvVarList, error)                                 // 列出所有系统环境变量，含类型、路径有效性校验
+    Delete(name string) error                                  // 删除指定系统环境变量
+    Set(name, value string) error                              // 设置/更新系统环境变量（SZ 类型）
+    CreateStartupScript(content, name string) (string, error)  // 将内容写入启动目录生成开机自启脚本
+    Expand(value string) (string, error)                       // 展开字符串中的 %VAR% 环境变量引用
+    CreateScheduledTask(isoPath string) error                  // 创建/更新 EWDK_Mount 计划任务
+    DeleteScheduledTask()                                      // 删除 EWDK_Mount 计划任务
+    IsMounted(isoPath string) bool                             // 检测指定 ISO 是否已挂载（内部调用 getEwdkDriveLetter 读取 WDKContentRoot）
+    MountISO(isoPath string) (string, error)                   // 挂载 ISO 文件，返回盘符
+    UnmountISO(isoPath string) error                           // 卸载指定 ISO
+    UnmountAll() error                                         // 卸载所有已挂载的 EWDK ISO
+    GetVirtualDiskPhysicalPath(isoPath string) (string, error) // 获取 ISO 的物理磁盘路径
+    CleanInvalidVars(shouldDelete func(string) bool) int       // 删除所有无效的环境变量
 }
 ```
 
-## 标准工作流程（mount-task.go 主逻辑）
+> **注意**: `GetMountedDriveLetter` 已从接口中移除。盘符检测由 [`getEwdkDriveLetter()`](file:///d:/ewdk/env.go) 直接读取 `WDKContentRoot` 环境变量完成，`IsMounted()` 和 `MountISO()` 内部调用它。
 
-当用户需要初始化/更新 EWDK 环境时，按以下顺序执行：
+## 标准工作流程（main.go 主逻辑）
 
-### Step 1: 确定 ISO 路径
-
-```go
-githubWorkspace := os.Getenv("GITHUB_WORKSPACE")
-if githubWorkspace != "" {
-    isoPath = filepath.Join(os.Getenv("TEMP"), "ewdk.iso")  // CI 环境
-} else {
-    isoPath = "d:\\ewdk\\EWDK_br_release_28000_251103-1709.iso"  // 本地开发
-}
-```
+当用户执行 `go run .` 时，按以下顺序执行：
 
 ### Step 1: 清理无效环境变量（最优先）
 
-**必须最先执行！** 先扫一遍注册表，把所有指向不存在路径的变量删掉。从 log.log 可以看到注册表里堆积了大量垃圾：
-
-```
-"AQUA_VM_OPTIONS", "CLION_VM_OPTIONS", "DATAGRIP_VM_OPTIONS", "GOLAND_VM_OPTIONS",
-"IDEA_VM_OPTIONS", "JETBRAINSCLIENT_VM_OPTIONS", "PHPSTORM_VM_OPTIONS",
-"PYCHARM_VM_OPTIONS", "RIDER_VM_OPTIONS", "RUBYMINE_VM_OPTIONS", ...
-```
-
-这些是 IDE 反复写入的残留，每次挂载/设置都会产生新的一批。先清理再操作，避免垃圾越积越多。
+**必须最先执行！** 先扫一遍注册表，把所有指向不存在路径的变量删掉：
 
 ```go
-count, _ := mgr.CleanInvalidVars()  // 删除所有指向不存在路径的环境变量
-```
-
-### Step 2: 删除已知干扰变量
-
-```go
-mgr.Delete("INCLUDE")  // 必须删除，否则 SetupBuildEnv 会追加而非替换
-mgr.Delete("LIB")      // 同上
-```
-
-### Step 3: 挂载 ISO（如未挂载）
-
-```go
-driveLetter, err := mgr.MountISO(isoPath)
-// MountISO 内部会：
-//   1. 检测是否已挂载（IsMounted + GetMountedDriveLetter）
-//   2. 未挂载则调用 Mount-DiskImage
-//   3. 自动设置 WDKContentRoot / WDK_ROOT / EWDKSetupEnvCmd
-//   4. 创建计划任务实现开机自动挂载（CreateScheduledTask）
-```
-### Step 5: 执行 SetupBuildEnv.cmd 并捕获 diff
-```go
-setupEnvCmd, _ := mgr.GetEWDKSetupEnvCmd()  // 如 "F:\BuildEnv\SetupBuildEnv.cmd"
-diff, err := mgr.CaptureDiff(setupEnvCmd + " amd64")  // 关键：必须传 amd64，否则默认 x86
-// diff.Added   → { "INCLUDE": "F:\\...\\Include\\...", "LIB": "F:\\...\\Lib\\...", "VCToolsInstallDir": "...", ... }
-// diff.Changed → [{Name:"PATH", OldValue:"...", NewValue:"...;F:\\...\\bin\\Hostx64\\x64;..."}, ... }
-// diff.Removed → 被删的变量
-```
-
-**关键：必须传 `amd64` 参数！** 不传的话 SetupBuildEnv.cmd 默认走 x86，导致：
-- PATH 首位是 `HostX86\x86`（32位 cl.exe）
-- LIB 混杂 x86 和 x64 路径
-- CC/CXX 不会被 EWDK 设置（仍然是 gcc/g++）
-- INCLUDE 缺少 WDK 的 um/ucrt/shared/km 路径
-
-### Step 6: 将 diff 写入系统环境变量（永久生效）
-
-```go
-// 5a. 设置新增变量到系统注册表
-for name, value := range diff.Added {
-    mgr.Set(name, value)
-}
-
-// 5b. 更新变更变量
-for _, delta := range diff.Changed {
-    mgr.Set(delta.Name, delta.NewValue)
-}
-```
-
-### Step 7: 填充 CMake 变量（FillCMake）
-
-```go
-cmakeVars, _ := mgr.FillCMake(diff.Added)
-for name, value := range cmakeVars {
-    mgr.Set(name, value)  // CMAKE_INCLUDE_PATH, CMAKE_LIBRARY_PATH, CC, CXX 等
-}
-```
-
-`FillCMake` 从 `diff.Added` 中推断 CMake 相关映射：
-- `INCLUDE` → `CMAKE_INCLUDE_PATH`
-- `LIB` → `CMAKE_LIBRARY_PATH`
-- `WDK_ROOT`/`WDKContentRoot` → `CMAKE_PREFIX_PATH`
-- `EWDKSetupEnvCmd` → 推断 `CMAKE_TOOLCHAIN_FILE`
-
-### Step 8: 强制设置 x64 编译器（最关键的一步）
-
-EWDK 的 SetupBuildEnv.cmd **不会设置 CC/CXX**，它们在 diff 中可能仍然是 `gcc`/`g++`。必须强制覆盖：
-
-```go
-vcToolsDir := addedVars["VCToolsInstallDir"]  // 如 "F:\...\MSVC\14.44.35207\"
-clExe := filepath.Join(vcToolsDir, "bin", "Hostx64", "x64", "cl.exe")
-
-mgr.Set("CC", clExe)              // C 编译器
-mgr.Set("CXX", clExe)             // C++ 编译器（cl.exe 同时处理两者）
-mgr.Set("CMAKE_C_COMPILER", clExe)   // CMake 显式指定
-mgr.Set("CMAKE_CXX_COMPILER", clExe) // CMake 显式指定
-```
-
-同时清理 PATH，**移除所有 `HostX86\x86` 条目**，确保 x64 工具链优先：
-
-```go
-// 从 PATH 中剔除 HostX86\x86，保留 Hostx64\x64
-parts := strings.Split(currentPath, ";")
-for _, part := range parts {
-    if strings.Contains(part, "HostX86\\x86") { continue }  // 删掉 x86
-    if strings.Contains(part, "Hostx64\\x64") { keep }      // 保留 x64
-}
-```
-
-### Step 9: 追加 ninja 到 PATH + 构建
-
-```go
-ninjaDir := filepath.Abs(filepath.Dir("ninja.exe"))
-// 追加到 PATH 末尾
-mgr.Set("PATH", currentPath + ";" + ninjaDir)
-
-// 构建
-exec.Command("cmake", "-B", "build", "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", ".")
-exec.Command("cmake", "--build", "build", "--config", "Release")
-```
-
-### Step 10: 最终环境变量健康检查（收尾）
-
-**所有操作完成后必须执行！** 整个流程（清理→挂载→diff→设置→构建）会产生新的垃圾变量或残留。这一步做最终稽查：
-
-```go
-func finalCheck(mgr EnvManager) {
-    // 1. List() 全量扫描注册表
-    allVars, _ := mgr.List()
-    
-    // 2. 筛选 Invalid && IsPath 的变量
-    var invalidVars []EnvVar
-    for _, v := range allVars {
-        if !v.Valid && v.IsPath {
-            invalidVars = append(invalidVars, v)
-        }
+mgr := NewRegistryEnvManager()
+mgr.CleanInvalidVars(func(key string) bool {
+    // 受保护变量白名单（保留不删除）
+    switch {
+    case strings.Contains(key, "_VM_OPTIONS"): return true
+    case strings.HasPrefix(key, "VSCODE_GIT"): return true
+    case strings.HasPrefix(key, "TRAE_"): return true
+    case strings.HasPrefix(key, "VSCMD_"): return true
+    // ... 更多白名单规则
     }
-    
-    // 3. 分类处理（大小写不敏感匹配）
-    for _, v := range invalidVars {
-        if isCompoundPath(v.Name) {
-            // 复合路径变量：清理无效子路径，保留有效部分
-            cleanedVal := cleanCompoundPath(v.Value)
-            if cleanedVal != v.Value {
-                mgr.Set(v.Name, cleanedVal)  // [FIX]
-            } else if isProtected(v.Name) {
-                // 整条都无效但受保护：跳过
-                continue  // [SKIP]
-            } else {
-                mgr.Delete(v.Name)  // [DEL]
-            }
-        } else if !isProtected(v.Name) {
-            mgr.Delete(v.Name)  // [DEL]
-        } else {
-            continue  // [SKIP]
-        }
-    }
-    
-    // 4. 稽查计划任务：删除过期的 EWDK_Mount
-    checkScheduledTasks(mgr)
+})
+```
+
+### Step 2: 挂载 ISO
+
+```go
+isoPath := resolveISOPath()  // 自动查找当前目录下的 EWDK*.iso 或 CI 环境的 TEMP\ewdk.iso
+driveLetter, _ := mgr.MountISO(isoPath)
+// MountISO 内部：
+//   1. IsMounted() → getEwdkDriveLetter() 读 WDKContentRoot 检测是否已挂载
+//   2. 未挂载则 PowerShell Mount-DiskImage
+//   3. CreateScheduledTask() 创建开机自动挂载任务
+```
+
+### Step 3: 执行 SetupBuildEnv.cmd（**已内置 amd64 参数**）
+
+```go
+setupEnvCmd := driveLetter + ":\\BuildEnv\\SetupBuildEnv.cmd"
+all := runSetupBuildEnv(setupEnvCmd)
+// 内部执行: cmd /c "F:\BuildEnv\SetupBuildEnv.cmd amd64 && set > tmpFile"
+// 返回 ewdkEnv 结构体，包含所有关键环境变量
+```
+
+> **关键设计决策**: `amd64` 参数在 [runSetupBuildEnv](file:///d:/ewdk/env.go) 函数内部硬编码，调用者无需关心。
+> 不传 `amd64` 会导致 SetupBuildEnv.cmd 默认走 x86，PATH 首位是 32 位工具链。
+
+### Step 4: 将 ewdkEnv 写入系统环境变量（永久生效）
+
+```go
+setEwdkEnvToSystem(mgr, all)
+```
+
+[`setEwdkEnvToSystem()`](file:///d:/ewdk/main.go) 将以下 11 个变量写入系统注册表：
+
+| 变量名 | 来源 | 说明 |
+|--------|------|------|
+| `WindowsTargetPlatformVersion` | `env.WindowsTargetPlatformVersion` | WDK 目标平台版本 |
+| `WDKContentRoot` | `env.WDKContentRoot` | WDK 内容根目录 |
+| `BuildLabSetupRoot` | `env.BuildLabSetupRoot` | 构建实验室根目录 |
+| `VSINSTALLDIR` | `env.VSINSTALLDIR` | VS 安装目录 |
+| `WDKBinRoot` | `env.WDKBinRoot` | WDK Bin 根目录 |
+| `DiaRoot` | `env.DiaRoot` | DIA SDK 目录 |
+| `VCToolsInstallDir` | `env.VCToolsInstallDir` | VC 工具安装目录 |
+| **`CC`** | `filepath.Join(VCToolsInstallDir, "bin\\Hostx64\\x64\\cl.exe")` | 强制 x64 C 编译器 |
+| **`CXX`** | 同 CC | C++ 编译器（cl.exe 同时处理） |
+| `INCLUDE` | `strings.Join(env.INCLUDE, ";")` | 头文件搜索路径（含 DIA/KM/UM/Shared/KMDF 1.35） |
+| `LIB` | `strings.Join(env.LIB, ";")` | 库文件搜索路径（含 x64） |
+
+每个变量写入时带 `[OK]`/`[FAIL]` 状态输出。
+
+### Step 5: 追加 ninja 到 PATH
+
+```go
+ninjaDir, _ := filepath.Abs(filepath.Dir("ninja.exe"))
+appendNinjaToPATH(mgr, ninjaDir)  // 追加到 PATH 末尾，去重检查
+```
+
+### Step 6: 构建项目
+
+```go
+if err := stream.RunCommands("build.bat"); err != nil {
+    mylog.Check(err)  // 构建失败时 panic 报错
 }
 ```
 
-**三类处理策略（按优先级）：**
+## runSetupBuildEnv 内部细节
 
-| 类型 | 示例 | 策略 | 说明 |
-|------|------|------|------|
-| **复合路径变量** | PATH, LIB, INCLUDE, PSModulePath, CMAKE_*, SAFE_RM_* | `cleanCompoundPath()` 逐段校验，删无效子路径，保留有效部分 | 绝不能整条删除 |
-| **受保护变量** | HOMEPATH, HOME, USERPROFILE, SystemRoot, windir | 跳过不操作 | Windows 系统必需或相对路径 |
-| **普通垃圾变量** | ToolsPathARCH, TRAE_*, *_VM_OPTIONS, VSCMD_ARG_* | 直接 Delete | 无残留价值 |
+位于 [env.go](file:///d:/ewdk/env.go)，核心逻辑：
 
-**为什么需要这一步：**
-- SetupBuildEnv.cmd 可能写入 `ToolsPathARCH`、`Platform=x86`、`VSCMD_ARG_*` 等一次性变量
-- IDE 反复写入的 `*_VM_OPTIONS` 残留（路径已不存在）
-- `F:\Program Files\Windows Kits\10\Tools\10.0.28000.0\x64` 这类路径可能在 ISO 卸载后失效
-- 旧的 `EWDK_Mount` 计划任务可能指向错误的 ISO 路径
-- Trae IDE 写入的临时变量（TRAE_JWT_TOKEN_PATH 等）
+1. 创建临时文件 `ewdk-env-after-setup.txt`
+2. 执行 `cmd /c "setupCmd amd64 && set > tmpFile"` — **amd64 已硬编码**
+3. 解析输出，提取关键字段：`WindowsTargetPlatformVersion`、`VCToolsInstallDir`、`WDKContentRoot`、`VSINSTALLDIR`、`INCLUDE`、`LIB`、`WDKBinRoot`
+4. 补充额外路径到 INCLUDE：
+   - `DIA SDK\include`
+   - `WDKBinRoot\km` / `km\crt` / `um` / `shared`
+   - `WDKContentRoot\Include\wdf\kmdf\1.35`
+5. 补充额外路径到 LIB：
+   - `DIA SDK\lib`
+   - `WDKBinRoot\km\x64` / `um\x64`
+6. 从 `VCToolsInstallDir` 拼接 x64 `cl.exe` 路径作为 `CC`
+7. 返回完整的 `ewdkEnv` 结构体
 
 ## CMake 使用方式
 
@@ -293,21 +229,22 @@ wdk_add_driver(MyDriver KMDF 1.15 main.c)
 
 | 变量 | 来源 | 用途 |
 |------|------|------|
-| `WDKContentRoot` | mount-task.go 设置 | 定位 WDK 头文件/库/签名工具 |
-| `PATH` | diff 中 Added/Changed | 包含 `cl.exe`, `link.exe`, `lib.exe` 等工具路径 |
+| `WDKContentRoot` | setEwdkEnvToSystem 设置 | 定位 WDK 头文件/库/签名工具 |
+| `INCLUDE` | setEwdkEnvToSystem 设置 | 含完整 WDK 路径的头文件搜索路径 |
+| `LIB` | setEwdkEnvToSystem 设置 | 含 x64 的库文件搜索路径 |
+| `CC` / `CXX` | setEwdkEnvToSystem 设置 | x64 cl.exe 编译器 |
 
 ## CI 流程 (.github/workflows/ci.yml)
 
-1. Checkout → 安装 Ninja → 获取 EWDK ISO URL → 下载 ISO
-2. **挂载 ISO** (`mount-task.ps1`)
-3. **CMake 构建**（此时环境变量已由 mount-task.ps1 设好）
+1. Checkout → 安装 Ninja → 安装 aria2 → 获取 EWDK ISO URL → 下载 ISO
+2. **挂载 ISO + 设置环境变量 + 构建** (`go run .` 即 main.go，内部依次执行：清理→MountISO→runSetupBuildEnv→setEwdkEnvToSystem→appendNinjaToPATH→build.bat)
 
 ## 常见操作命令
 
 ```bash
 # 构建整个项目（包括 demo）
 go build -o ewdk.exe .
-./ewdk.exe                    # 执行主流程：挂载→清理→diff→设置→构建
+./ewdk.exe                    # 执行主流程：清理→挂载→setupEnv→设置变量→构建
 
 # 仅运行测试
 go test -v ./...
@@ -322,12 +259,11 @@ go run . clean                # 删除所有指向不存在路径的环境变量
 
 ## 注意事项
 
-1. **必须先 Delete("INCLUDE") 和 Delete("LIB")** 再执行 CaptureDiff，否则 SetupBuildEnv.cmd 会将新路径**追加**到旧值后面，导致路径混乱
-2. **CaptureDiff 必须传 `amd64` 参数**：`CaptureDiff(setupCmd + " amd64")`，不传默认 x86，CC/CXX 不会被设置，PATH 首位是 32 位工具
-3. **EWDK 不设 CC/CXX**：SetupBuildEnv.cmd 执行后 CC/CXX 可能仍是 gcc/g++，必须从 `VCToolsInstallDir` 拼出 x64 cl.exe 路径强制覆盖
-4. **必须清理 PATH 中的 HostX86\x86**：amd64 模式下 PATH 仍可能包含 x86 工具链路径，需剔除以确保 cmake 找到正确的 64 位 cl.exe
-5. **CaptureDiff 返回的是带值的 EnvDiff**，不是裸 key 列表。Added 直接喂给 FillCMake/系统注册表，Changed 包含 old/new 用于审计
-6. **环境变量写入的是系统级注册表**（`HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment`），重启/新终端均生效
-7. **ninja.exe 在项目根目录**，设置环境变量时应将其目录追加到 PATH
-8. **build.bat 应尽可能简化**，因为环境变量已由 Go 程序永久设好，bat 只需负责 cmake 调用
-9. **最终必须执行 finalCheck()**：全量 List() 扫描注册表，删除所有 Invalid+IsPath 的变量 + 清理过期计划任务。整个流程会产生新垃圾（ToolsPathARCH、Platform、VSCMD_ARG_* 等），不收尾会越积越多
+1. **`amd64` 已内置于 `runSetupBuildEnv`**：无需调用者手动拼接参数，函数内部硬编码 `setupCmd + " amd64"`
+2. **EWDK 不设 CC/CXX**：`runSetupBuildEnv` 内部从 `VCToolsInstallDir` 自动拼接 `bin\Hostx64\x64\cl.exe` 作为 CC 和 CXX
+3. **`GetMountedDriveLetter` 已移除**：盘符检测由 `getEwdkDriveLetter()` 读取 `WDKContentRoot` 环境变量完成，不再需要 Win32 API 遍历驱动器
+4. **环境变量写入的是系统级注册表**（`HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment`），重启/新终端均生效
+5. **ninja.exe 在项目根目录**，`appendNinjaToPATH` 会将其目录追加到 PATH（去重检查）
+6. **build.bat 应尽可能简化**，因为环境变量已由 Go 程序永久设好，bat 只需负责 cmake 调用
+7. **`setEwdkEnvToSystem` 写入 11 个变量**，空值自动跳过，每条带 `[OK]`/`[FAIL]` 状态输出
+8. **环境变量名使用 `Env*` 常量**（定义于 [env.go](file:///d:/ewdk/env.go)）：`EnvWDKContentRoot`、`EnvVCToolsInstallDir`、`EnvINCLUDE` 等 11 个，`runSetupBuildEnv`、`setEwdkEnvToSystem`、`getEwdkDriveLetter` 共享同一套常量，消除重复字符串
