@@ -42,7 +42,7 @@ jobs:
         id: cache-iso
         uses: actions/cache@v5
         with:
-          path: ${{ env.TEMP }}\ewdk.iso
+          path: C:\Users\runneradmin\AppData\Local\Temp\ewdk.iso
           key: ewdk-iso-${{ hashFiles('scripts/get_ewdk_url.go') }}
           restore-keys: |
             ewdk-iso-
@@ -73,15 +73,15 @@ jobs:
 
       - name: 删除远程已有tag
         run: |
-          git push --delete origin ${{ github.ref_name }} 2>$null || true
+          git push --delete origin ci-release 2>$null || true
 
       - name: 创建本地tag
         run: |
-          git tag ${{ github.ref_name }}
+          git tag -f ci-release
 
       - name: 推送tag到远程
         run: |
-          git push origin ${{ github.ref_name }}
+          git push origin ci-release
 
       - name: 获取 commit 信息
         id: commit_info
@@ -91,17 +91,20 @@ jobs:
 
       - name: 创建源码压缩包
         run: |
-          Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip" -Force
-          Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip"
+          Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip" -Force
+          Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip"
 
       - name: 发布
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ci-release
           files: |
-            ${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip
+            ${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip
           body: |
-            EWDK Build - ${{ github.ref_name }}
+            EWDK Build - CI Release
 
             Build Date: ${{ steps.commit_info.outputs.date }}
             Commit: ${{ steps.commit_info.outputs.commit }}
             Branch: ${{ github.ref_name }}
+          draft: false
+          prerelease: true
