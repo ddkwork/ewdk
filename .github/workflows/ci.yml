@@ -70,3 +70,36 @@ jobs:
       - name: 挂载ISO并构建
         run: |
           go run .
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 获取 commit 信息
+        id: commit_info
+        run: |
+          echo "commit=${{ github.sha }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          echo "date=$(Get-Date -Format 'yyyy-MM-dd')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: 创建源码压缩包
+        run: |
+          Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip" -Force
+          Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip"
+
+      - name: 发布
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.RELEASE_ZIP_FILE_NAME }}-${{ github.ref_name }}.zip
+          body: |
+            EWDK Build - ${{ github.ref_name }}
+
+            Build Date: ${{ steps.commit_info.outputs.date }}
+            Commit: ${{ steps.commit_info.outputs.commit }}
+            Branch: ${{ github.ref_name }}
