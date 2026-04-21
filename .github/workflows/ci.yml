@@ -75,6 +75,14 @@ jobs:
         run: |
           git push --delete origin ${{ github.ref_name }} 2>$null || true
 
+      - name: 创建本地tag
+        run: |
+          git tag ${{ github.ref_name }}
+
+      - name: 推送tag到远程
+        run: |
+          git push origin ${{ github.ref_name }}
+
       - name: 获取 commit 信息
         id: commit_info
         run: |
