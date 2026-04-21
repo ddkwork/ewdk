@@ -19,11 +19,6 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: 安装Ninja
-        run: |
-          Copy-Item "$env:GITHUB_WORKSPACE\ninja.exe" "$env:TEMP\ninja.exe" -Force
-          Write-Host "Ninja version: $(& "$env:TEMP\ninja.exe" --version)"
-
   build:
     needs: test
     runs-on: windows-latest
@@ -32,11 +27,6 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v6
-
-      - name: 安装Ninja
-        run: |
-          Copy-Item "$env:GITHUB_WORKSPACE\ninja.exe" "$env:TEMP\ninja.exe" -Force
-          Write-Host "Ninja version: $(& "$env:TEMP\ninja.exe" --version)"
 
       - name: 安装 aria2
         run: |
