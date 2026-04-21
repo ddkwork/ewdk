@@ -48,19 +48,17 @@ jobs:
           Write-Host "aria2 installed: $env:TEMP\aria2c.exe"
           & "$env:TEMP\aria2c.exe" --version
 
-      - name: 检查本地缓存
-        id: local-cache
-        run: |
-          $cachePath = "$env:TEMP\ewdk.iso"
-          if (Test-Path $cachePath) {
-            Write-Host "Cached ISO found"
-            Write-Host "cache-hit=true" >> $env:GITHUB_OUTPUT
-          } else {
-            Write-Host "cache-hit=false" >> $env:GITHUB_OUTPUT
-          }
+      - name: 缓存EWDK ISO
+        id: cache-iso
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TEMP }}\ewdk.iso
+          key: ewdk-iso-${{ hashFiles('scripts/get_ewdk_url.go') }}
+          restore-keys: |
+            ewdk-iso-
 
       - name: 下载EWDK ISO
-        if: steps.local-cache.outputs.cache-hit != 'true'
+        if: steps.cache-iso.outputs.cache-hit != 'true'
         run: |
           go run scripts/get_ewdk_url.go
           $ewdkUrl = Get-Content "$env:GITHUB_ENV" | Select-String "EWDK_ISO_URL=" | ForEach-Object { $_.ToString().Replace("EWDK_ISO_URL=", "").Trim() }
