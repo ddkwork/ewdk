@@ -81,6 +81,10 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v6
 
+      - name: 删除远程已有tag
+        run: |
+          git push --delete origin ${{ github.ref_name }} 2>$null || true
+
       - name: 获取 commit 信息
         id: commit_info
         run: |
