@@ -2,10 +2,7 @@ module ewdk
 
 go 1.26.1
 
-require (
-	github.com/ddkwork/golibrary v0.1.13
-	golang.org/x/sys v0.32.0
-)
+require github.com/ddkwork/golibrary v0.1.13
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect

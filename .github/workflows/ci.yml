@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: 检出代码
+      - name: Checkout
         uses: actions/checkout@v6
 
   build:
@@ -25,10 +25,10 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: 检出代码
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: 安装 aria2
+      - name: Install aria2
         run: |
           $ProgressPreference = 'SilentlyContinue'
           $aria2Url = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
@@ -38,7 +38,7 @@ jobs:
           Write-Host "aria2 installed: $env:TEMP\aria2c.exe"
           & "$env:TEMP\aria2c.exe" --version
 
-      - name: 缓存EWDK ISO
+      - name: Cache EWDK ISO
         id: cache-iso
         uses: actions/cache@v5
         with:
@@ -47,7 +47,7 @@ jobs:
           restore-keys: |
             ewdk-iso-
 
-      - name: 下载EWDK ISO
+      - name: Download EWDK ISO
         if: steps.cache-iso.outputs.cache-hit != 'true'
         run: |
           go run scripts/get_ewdk_url.go
@@ -57,9 +57,16 @@ jobs:
           $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
           Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
 
-      - name: 挂载ISO并构建
+      - name: Mount ISO and generate ewdk-env.cmake
         run: |
           go run .
+
+      - name: Build Release and Debug
+        run: |
+          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release .
+          cmake --build build --config Release
+          cmake -B build_debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug .
+          cmake --build build_debug --config Debug
 
   release:
     needs: build
@@ -68,33 +75,33 @@ jobs:
       contents: write
 
     steps:
-      - name: 检出代码
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: 删除远程已有tag
+      - name: Delete existing remote tag
         run: |
           git push --delete origin ci-release 2>$null || true
 
-      - name: 创建本地tag
+      - name: Create local tag
         run: |
           git tag -f ci-release
 
-      - name: 推送tag到远程
+      - name: Push tag
         run: |
           git push origin ci-release
 
-      - name: 获取 commit 信息
+      - name: Get commit info
         id: commit_info
         run: |
           echo "commit=${{ github.sha }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           echo "date=$(Get-Date -Format 'yyyy-MM-dd')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: 创建源码压缩包
+      - name: Create source archive
         run: |
           Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip" -Force
           Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip"
 
-      - name: 发布
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ci-release
