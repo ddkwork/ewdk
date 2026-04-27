@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/mylog/pretty"
@@ -70,6 +72,7 @@ func main() {
 	mylog.Struct(all)
 	setEwdkEnvToSystem(mgr, all)
 	syncEwdkEnvToUser(mgr, all)
+	broadcastEnvChange()
 	saveEnvToFile(mgr)
 
 
@@ -221,4 +224,30 @@ func saveEnvToFile(mgr EnvManager) {
 	pretty.PrintTo(f, userVars, true)
 
 	fmt.Printf("  [OK]   env saved to: %s\n", filename)
+}
+
+func broadcastEnvChange() {
+	const HWND_BROADCAST uintptr = 0xffff
+	const WM_SETTINGCHANGE = 0x001A
+	const SMTO_ABORTIFHUNG = 0x0002
+
+	user32 := syscall.MustLoadDLL("user32.dll")
+	sendMessageTimeout := user32.MustFindProc("SendMessageTimeoutW")
+
+	var ret uintptr
+	env, _ := syscall.UTF16PtrFromString("Environment")
+	syscall.Syscall9(
+		sendMessageTimeout.Addr(),
+		8,
+		HWND_BROADCAST,
+		WM_SETTINGCHANGE,
+		0,
+		uintptr(unsafe.Pointer(env)),
+		SMTO_ABORTIFHUNG,
+		5000,
+		uintptr(unsafe.Pointer(&ret)),
+		0,
+		0,
+	)
+	fmt.Printf("  [OK]   broadcast WM_SETTINGCHANGE\n")
 }
