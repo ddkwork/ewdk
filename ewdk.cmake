@@ -19,11 +19,11 @@
 #                          if not set, the value will be automatically calculated by WINVER
 #        (default value is left blank and can be changed per target or globally)
 
-if(DEFINED EWDK_WDKContentRoot)
-    set(_WDK_ROOT "${EWDK_WDKContentRoot}")
-    set(WDK_VERSION "${EWDK_WindowsTargetPlatformVersion}")
-    set(WDK_INC_VERSION "${EWDK_WindowsTargetPlatformVersion}")
-    set(WDK_LIB_VERSION "${EWDK_WindowsTargetPlatformVersion}")
+if(DEFINED EWDK_COMMON_WDKContentRoot)
+    set(_WDK_ROOT "${EWDK_COMMON_WDKContentRoot}")
+    set(WDK_VERSION "${EWDK_COMMON_WindowsTargetPlatformVersion}")
+    set(WDK_INC_VERSION "${EWDK_COMMON_WindowsTargetPlatformVersion}")
+    set(WDK_LIB_VERSION "${EWDK_COMMON_WindowsTargetPlatformVersion}")
     file(GLOB WDK_NTDDK_FILES
         "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/km/ntddk.h"
     )
@@ -140,19 +140,35 @@ if(NOT WDK_PLATFORM)
     list(APPEND WDK_COMPILE_DEFINITIONS "_AMD64_;AMD64")
 endif()
 
-if(DEFINED EWDK_UCRT_INC)
-    set(_UCRT_INC "${EWDK_UCRT_INC}")
-    set(_UCRT_LIB "${EWDK_UCRT_LIB}")
+if(DEFINED EWDK_KM_INCLUDE_DIRS)
+    set(_KM_INCLUDE_DIRS ${EWDK_KM_INCLUDE_DIRS})
+    set(_KM_LIB_DIRS ${EWDK_KM_LIB_DIRS})
+else()
+    set(_KM_INCLUDE_DIRS
+        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
+        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/km"
+        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/km/crt"
+        )
+    set(_KM_LIB_DIRS
+        "${WDK_ROOT}/Lib/${WDK_LIB_VERSION}/km/${WDK_PLATFORM}"
+        )
+endif()
+
+if(DEFINED EWDK_UM_INCLUDE_DIRS)
+    set(_UM_INCLUDE_DIRS ${EWDK_UM_INCLUDE_DIRS})
+    set(_UM_LIB_DIRS ${EWDK_UM_LIB_DIRS})
 else()
     set(_UCRT_INC "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/ucrt")
     set(_UCRT_LIB "${_WDK_ROOT}/Lib/${WDK_VERSION}/ucrt/${WDK_PLATFORM}")
-endif()
-list(APPEND CMAKE_INCLUDE_PATH ${_UCRT_INC})
-list(APPEND CMAKE_LIBRARY_PATH ${_UCRT_LIB})
-
-if(DEFINED EWDK_VC_INC_DIRS)
-    set(_VC_INC_DIRS "${EWDK_VC_INC_DIRS}")
-    set(_VC_LIB_DIRS "${EWDK_VC_LIB_DIRS}")
+    set(_UM_INCLUDE_DIRS
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
+        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
+        ${_UCRT_INC}
+        )
+    set(_UM_LIB_DIRS
+        "${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}"
+        ${_UCRT_LIB}
+        )
 endif()
 
 string(CONCAT WDK_LINK_FLAGS
@@ -194,11 +210,7 @@ function(wdk_add_driver _target)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
     endif()
 
-    target_include_directories(${_target} PRIVATE
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/km"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/km/crt"
-        )
+    target_include_directories(${_target} PRIVATE ${_KM_INCLUDE_DIRS})
 
     target_link_libraries(${_target} WDK::NTOSKRNL WDK::HAL WDK::WMILIB)
 
@@ -238,9 +250,9 @@ function(wdk_add_driver _target)
 
     if(WDK_TEST_SIGN)
         if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-            set(WDK_SIGNTOOL_PATH "${EWDK_WDKContentRoot}/bin/${WDK_VERSION}/x86/signtool.exe")
+            set(WDK_SIGNTOOL_PATH "${EWDK_COMMON_WDKContentRoot}/bin/${WDK_VERSION}/x86/signtool.exe")
         else()
-            set(WDK_SIGNTOOL_PATH "${EWDK_WDKContentRoot}/bin/${WDK_VERSION}/x64/signtool.exe")
+            set(WDK_SIGNTOOL_PATH "${EWDK_COMMON_WDKContentRoot}/bin/${WDK_VERSION}/x64/signtool.exe")
         endif()
         add_custom_command(TARGET ${_target} POST_BUILD
             COMMAND ${WDK_SIGNTOOL_PATH} sign /fd SHA256 /s My /n ${WDK_TEST_SIGN_NAME} /t http://timestamp.digicert.com $<TARGET_FILE:${_target}>
@@ -264,11 +276,7 @@ function(wdk_add_library _target)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
     endif()
 
-    target_include_directories(${_target} PRIVATE
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/km"
-        "${WDK_ROOT}/Include/${WDK_INC_VERSION}/km/crt"
-        )
+    target_include_directories(${_target} PRIVATE ${_KM_INCLUDE_DIRS})
 
     if(DEFINED WDK_KMDF)
         target_include_directories(${_target} PRIVATE "${WDK_ROOT}/Include/wdf/kmdf/${WDK_KMDF}")
@@ -295,12 +303,7 @@ function(wdk_add_executable _target)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
     endif()
 
-    target_include_directories(${_target} PRIVATE
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
-        ${_UCRT_INC}
-        ${_VC_INC_DIRS}
-        )
+    target_include_directories(${_target} PRIVATE ${_UM_INCLUDE_DIRS})
 
     if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
         set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
@@ -308,10 +311,8 @@ function(wdk_add_executable _target)
         set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
     endif()
 
-    target_link_options(${_target} PRIVATE "/LIBPATH:${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
-    target_link_options(${_target} PRIVATE "/LIBPATH:${_UCRT_LIB}")
-    foreach(_vc_lib_dir ${_VC_LIB_DIRS})
-        target_link_options(${_target} PRIVATE "/LIBPATH:${_vc_lib_dir}")
+    foreach(_lib_dir ${_UM_LIB_DIRS})
+        target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
     endforeach()
     target_link_libraries(${_target} kernel32.lib user32.lib)
 endfunction()
@@ -331,16 +332,9 @@ function(um_library _target)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
     endif()
 
-    target_include_directories(${_target} PRIVATE
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
-        ${_UCRT_INC}
-        ${_VC_INC_DIRS}
-        )
-    target_link_options(${_target} PRIVATE "/LIBPATH:${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
-    target_link_options(${_target} PRIVATE "/LIBPATH:${_UCRT_LIB}")
-    foreach(_vc_lib_dir ${_VC_LIB_DIRS})
-        target_link_options(${_target} PRIVATE "/LIBPATH:${_vc_lib_dir}")
+    target_include_directories(${_target} PRIVATE ${_UM_INCLUDE_DIRS})
+    foreach(_lib_dir ${_UM_LIB_DIRS})
+        target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
     endforeach()
 endfunction()
 
@@ -361,16 +355,9 @@ function(um_dll _target)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
     endif()
 
-    target_include_directories(${_target} PRIVATE
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/shared"
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/um"
-        ${_UCRT_INC}
-        ${_VC_INC_DIRS}
-        )
-    target_link_options(${_target} PRIVATE "/LIBPATH:${_WDK_ROOT}/Lib/${WDK_VERSION}/um/${WDK_PLATFORM}")
-    target_link_options(${_target} PRIVATE "/LIBPATH:${_UCRT_LIB}")
-    foreach(_vc_lib_dir ${_VC_LIB_DIRS})
-        target_link_options(${_target} PRIVATE "/LIBPATH:${_vc_lib_dir}")
+    target_include_directories(${_target} PRIVATE ${_UM_INCLUDE_DIRS})
+    foreach(_lib_dir ${_UM_LIB_DIRS})
+        target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
     endforeach()
     target_link_libraries(${_target} kernel32.lib)
 endfunction()

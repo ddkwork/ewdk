@@ -27,21 +27,36 @@ const powershell = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.e
 
 var taskName = "EWDK_Mount"
 
-type ewdkEnv struct {
-	WindowsTargetPlatformVersion string
+type ewdkCommonEnv struct {
 	WDKContentRoot               string
-	BuildLabSetupRoot            string
-	VSINSTALLDIR                 string
-	INCLUDE                      []string
-	LIB                          []string
+	WindowsTargetPlatformVersion string
+	VCToolsInstallDir            string
 	WDKBinRoot                   string
 	DiaRoot                      string
-	VCToolsInstallDir            string
+	VSINSTALLDIR                 string
+	BuildLabSetupRoot            string
 	CC                           string
-	UCRTInc                      string
-	UCRTLib                      string
-	VCIncDirs                    []string
-	VCLibDirs                    []string
+	RC                           string
+	MT                           string
+	NinjaDir                     string
+}
+
+type ewdkKMEnv struct {
+	IncludeDirs []string
+	LibDirs     []string
+}
+
+type ewdkUMEnv struct {
+	IncludeDirs []string
+	LibDirs     []string
+}
+
+type ewdkEnv struct {
+	Common ewdkCommonEnv
+	KM     ewdkKMEnv
+	UM     ewdkUMEnv
+	INCLUDE []string
+	LIB     []string
 }
 
 func main() {
@@ -213,25 +228,67 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	}
 	DiaRoot := filepath.Join(result[EnvVSINSTALLDIR], "DIA SDK")
 
+	pre := filepath.Join(result[EnvWDKContentRoot], "Include", result[EnvWindowsTargetPlatformVersion])
 	ucrtInc := filepath.Join(result[EnvWDKContentRoot], "Include", result[EnvWindowsTargetPlatformVersion], "ucrt")
 	ucrtLib := filepath.Join(result[EnvWDKContentRoot], "Lib", result[EnvWindowsTargetPlatformVersion], "ucrt", "x64")
+	umLib := filepath.Join(result[EnvWDKContentRoot], "Lib", result[EnvWindowsTargetPlatformVersion], "um", "x64")
 
-	vcIncDirs := []string{
+	vcInc := []string{
 		filepath.Join(result[EnvVCToolsInstallDir], "include"),
 		filepath.Join(result[EnvVCToolsInstallDir], "ATLMFC", "include"),
 		filepath.Join(result[EnvVSINSTALLDIR], "VC", "Auxiliary", "VS", "include"),
 		filepath.Join(DiaRoot, "include"),
 	}
-	vcLibDirs := []string{
+	vcLib := []string{
 		filepath.Join(result[EnvVCToolsInstallDir], "lib", "x64"),
 		filepath.Join(result[EnvVCToolsInstallDir], "ATLMFC", "lib", "x64"),
 		filepath.Join(DiaRoot, "lib"),
 	}
 
+	cc := filepath.Join(result[EnvVCToolsInstallDir], "bin\\Hostx64\\x64\\cl.exe")
+	rc := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "rc.exe")
+	mt := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "mt.exe")
+	ninjaDir, _ := filepath.Abs(filepath.Dir("ninja.exe"))
+
+	common := ewdkCommonEnv{
+		WDKContentRoot:               result[EnvWDKContentRoot],
+		WindowsTargetPlatformVersion: result[EnvWindowsTargetPlatformVersion],
+		VCToolsInstallDir:            result[EnvVCToolsInstallDir],
+		WDKBinRoot:                   result[EnvWDKBinRoot],
+		DiaRoot:                      DiaRoot,
+		VSINSTALLDIR:                 result[EnvVSINSTALLDIR],
+		BuildLabSetupRoot:            result[EnvBuildLabSetupRoot],
+		CC:                           cc,
+		RC:                           rc,
+		NinjaDir:                     ninjaDir,
+	}
+	if _, err := os.Stat(mt); err == nil {
+		common.MT = mt
+	}
+
+	km := ewdkKMEnv{
+		IncludeDirs: []string{
+			filepath.Join(pre, "shared"),
+			filepath.Join(pre, "km"),
+			filepath.Join(pre, "km", "crt"),
+		},
+		LibDirs: []string{
+			filepath.Join(result[EnvWDKContentRoot], "Lib", result[EnvWindowsTargetPlatformVersion], "km", "x64"),
+		},
+	}
+
+	um := ewdkUMEnv{
+		IncludeDirs: append([]string{
+			filepath.Join(pre, "shared"),
+			filepath.Join(pre, "um"),
+			ucrtInc,
+		}, vcInc...),
+		LibDirs: append([]string{umLib, ucrtLib}, vcLib...),
+	}
+
 	include := strings.Split(result[EnvINCLUDE], ";")
 	lib := strings.Split(result[EnvLIB], ";")
 
-	pre := filepath.Join(result[EnvWDKContentRoot], "Include", result[EnvWindowsTargetPlatformVersion])
 	include = append(include,
 		filepath.Join(DiaRoot, "include"),
 		filepath.Join(pre, "km"),
@@ -248,106 +305,82 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	)
 
 	return ewdkEnv{
-		WindowsTargetPlatformVersion: result[EnvWindowsTargetPlatformVersion],
-		WDKContentRoot:               result[EnvWDKContentRoot],
-		BuildLabSetupRoot:            result[EnvBuildLabSetupRoot],
-		VSINSTALLDIR:                 result[EnvVSINSTALLDIR],
-		INCLUDE:                      include,
-		LIB:                          lib,
-		WDKBinRoot:                   result[EnvWDKBinRoot],
-		DiaRoot:                      DiaRoot,
-		VCToolsInstallDir:            result[EnvVCToolsInstallDir],
-		CC:                           filepath.Join(result[EnvVCToolsInstallDir], "bin\\Hostx64\\x64\\cl.exe"),
-		UCRTInc:                      ucrtInc,
-		UCRTLib:                      ucrtLib,
-		VCIncDirs:                    vcIncDirs,
-		VCLibDirs:                    vcLibDirs,
+		Common:  common,
+		KM:      km,
+		UM:      um,
+		INCLUDE: include,
+		LIB:     lib,
 	}, nil
 }
 
 func generateEwdkCmake(env ewdkEnv, outputPath string) error {
-	ninjaDir, _ := filepath.Abs(filepath.Dir("ninja.exe"))
-	rc := filepath.Join(env.WDKContentRoot, "bin", env.WindowsTargetPlatformVersion, "x64", "rc.exe")
-
 	cm := func(p string) string {
 		p = strings.ReplaceAll(p, `\`, "/")
 		p = strings.TrimRight(p, "/")
 		return p
 	}
 
+	writeDirs := func(b *strings.Builder, name string, dirs []string) {
+		b.WriteString(fmt.Sprintf("\nset(%s \"", name))
+		for i, p := range dirs {
+			if i > 0 {
+				b.WriteString(";")
+			}
+			b.WriteString(cm(p))
+		}
+		b.WriteString("\")\n")
+	}
+
+	c := env.Common
 	var cmake strings.Builder
 	cmake.WriteString("# Auto-generated by ewdk toolchain manager - DO NOT EDIT\n")
-	cmake.WriteString("# All EWDK environment variables are embedded here for portability\n\n")
+	cmake.WriteString("# All EWDK environment variables are embedded here for portability\n")
 
-	cmake.WriteString(fmt.Sprintf("set(EWDK_WDKContentRoot \"%s\")\n", cm(env.WDKContentRoot)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_WindowsTargetPlatformVersion \"%s\")\n", env.WindowsTargetPlatformVersion))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_VCToolsInstallDir \"%s\")\n", cm(env.VCToolsInstallDir)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_WDKBinRoot \"%s\")\n", cm(env.WDKBinRoot)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_DiaRoot \"%s\")\n", cm(env.DiaRoot)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_VSINSTALLDIR \"%s\")\n", cm(env.VSINSTALLDIR)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_BuildLabSetupRoot \"%s\")\n", cm(env.BuildLabSetupRoot)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_CC \"%s\")\n", cm(env.CC)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_CXX \"%s\")\n", cm(env.CC)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_RC \"%s\")\n", cm(rc)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_NINJA_DIR \"%s\")\n", cm(ninjaDir)))
-
-	cmake.WriteString(fmt.Sprintf("\nset(EWDK_UCRT_INC \"%s\")\n", cm(env.UCRTInc)))
-	cmake.WriteString(fmt.Sprintf("set(EWDK_UCRT_LIB \"%s\")\n", cm(env.UCRTLib)))
-
-	cmake.WriteString("\nset(EWDK_VC_INC_DIRS \"")
-	for i, p := range env.VCIncDirs {
-		if i > 0 {
-			cmake.WriteString(";")
-		}
-		cmake.WriteString(cm(p))
+	cmake.WriteString("\n# ---- Common ----\n")
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_WDKContentRoot \"%s\")\n", cm(c.WDKContentRoot)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_WindowsTargetPlatformVersion \"%s\")\n", c.WindowsTargetPlatformVersion))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_VCToolsInstallDir \"%s\")\n", cm(c.VCToolsInstallDir)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_WDKBinRoot \"%s\")\n", cm(c.WDKBinRoot)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_DiaRoot \"%s\")\n", cm(c.DiaRoot)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_VSINSTALLDIR \"%s\")\n", cm(c.VSINSTALLDIR)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_BuildLabSetupRoot \"%s\")\n", cm(c.BuildLabSetupRoot)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_CC \"%s\")\n", cm(c.CC)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_CXX \"%s\")\n", cm(c.CC)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_RC \"%s\")\n", cm(c.RC)))
+	cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_NINJA_DIR \"%s\")\n", cm(c.NinjaDir)))
+	if c.MT != "" {
+		cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_MT \"%s\")\n", cm(c.MT)))
 	}
-	cmake.WriteString("\")\n")
 
-	cmake.WriteString("\nset(EWDK_VC_LIB_DIRS \"")
-	for i, p := range env.VCLibDirs {
-		if i > 0 {
-			cmake.WriteString(";")
-		}
-		cmake.WriteString(cm(p))
-	}
-	cmake.WriteString("\")\n")
+	cmake.WriteString("\n# ---- KM (Kernel-Mode) ----\n")
+	writeDirs(&cmake, "EWDK_KM_INCLUDE_DIRS", env.KM.IncludeDirs)
+	writeDirs(&cmake, "EWDK_KM_LIB_DIRS", env.KM.LibDirs)
 
-	cmake.WriteString("\nset(EWDK_INCLUDE \"")
-	for i, p := range env.INCLUDE {
-		if i > 0 {
-			cmake.WriteString(";")
-		}
-		cmake.WriteString(cm(p))
-	}
-	cmake.WriteString("\")\n")
+	cmake.WriteString("\n# ---- UM (User-Mode) ----\n")
+	writeDirs(&cmake, "EWDK_UM_INCLUDE_DIRS", env.UM.IncludeDirs)
+	writeDirs(&cmake, "EWDK_UM_LIB_DIRS", env.UM.LibDirs)
 
-	cmake.WriteString("\nset(EWDK_LIB \"")
-	for i, p := range env.LIB {
-		if i > 0 {
-			cmake.WriteString(";")
-		}
-		cmake.WriteString(cm(p))
-	}
-	cmake.WriteString("\")\n")
+	cmake.WriteString("\n# ---- Legacy env vars ----\n")
+	writeDirs(&cmake, "EWDK_INCLUDE", env.INCLUDE)
+	writeDirs(&cmake, "EWDK_LIB", env.LIB)
 
-	cmake.WriteString("\nset(CMAKE_C_COMPILER \"${EWDK_CC}\" CACHE FILEPATH \"\" FORCE)\n")
-	cmake.WriteString("set(CMAKE_CXX_COMPILER \"${EWDK_CXX}\" CACHE FILEPATH \"\" FORCE)\n")
-	cmake.WriteString("set(CMAKE_RC_COMPILER \"${EWDK_RC}\" CACHE FILEPATH \"\" FORCE)\n")
+	cmake.WriteString("\n# ---- Compiler / Linker ----\n")
+	cmake.WriteString("set(CMAKE_C_COMPILER \"${EWDK_COMMON_CC}\" CACHE FILEPATH \"\" FORCE)\n")
+	cmake.WriteString("set(CMAKE_CXX_COMPILER \"${EWDK_COMMON_CXX}\" CACHE FILEPATH \"\" FORCE)\n")
+	cmake.WriteString("set(CMAKE_RC_COMPILER \"${EWDK_COMMON_RC}\" CACHE FILEPATH \"\" FORCE)\n")
 	cmake.WriteString("set(CMAKE_INCLUDE_PATH \"${EWDK_INCLUDE}\" CACHE STRING \"\" FORCE)\n")
 	cmake.WriteString("set(CMAKE_LIBRARY_PATH \"${EWDK_LIB}\" CACHE STRING \"\" FORCE)\n")
 
-	cmake.WriteString("\nlist(APPEND CMAKE_PROGRAM_PATH \"${EWDK_NINJA_DIR}\")\n")
-	cmake.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(env.CC))))
-	if _, err := os.Stat(rc); err == nil {
-		cmake.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(rc))))
+	cmake.WriteString("\nlist(APPEND CMAKE_PROGRAM_PATH \"${EWDK_COMMON_NINJA_DIR}\")\n")
+	cmake.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.CC))))
+	if _, err := os.Stat(c.RC); err == nil {
+		cmake.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.RC))))
+	}
+	if c.MT != "" {
+		cmake.WriteString(fmt.Sprintf("set(CMAKE_MT \"%s\" CACHE FILEPATH \"\" FORCE)\n", cm(c.MT)))
 	}
 
-	mt := filepath.Join(env.WDKContentRoot, "bin", env.WindowsTargetPlatformVersion, "x64", "mt.exe")
-	if _, err := os.Stat(mt); err == nil {
-		cmake.WriteString(fmt.Sprintf("\nset(CMAKE_MT \"%s\" CACHE FILEPATH \"\" FORCE)\n", cm(mt)))
-	}
-
-	cmake.WriteString("\nset(ENV{WDKContentRoot} \"${EWDK_WDKContentRoot}\")\n")
+	cmake.WriteString("\nset(ENV{WDKContentRoot} \"${EWDK_COMMON_WDKContentRoot}\")\n")
 	cmake.WriteString("set(ENV{INCLUDE} \"${EWDK_INCLUDE}\")\n")
 	cmake.WriteString("set(ENV{LIB} \"${EWDK_LIB}\")\n")
 
