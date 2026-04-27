@@ -1,0 +1,682 @@
+=== SYSTEM ENV ===
+[
+  <0> main.EnvVar {
+          Name: "BuildLabSetupRoot",
+         Value: "E:",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <1> main.EnvVar {
+          Name: "CC",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <2> main.EnvVar {
+          Name: "CMAKE_C_COMPILER",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <3> main.EnvVar {
+          Name: "CMAKE_CXX_COMPILER",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <4> main.EnvVar {
+          Name: "CMAKE_INCLUDE_PATH",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\VS\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\include",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km\\crt",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\shared",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\um",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\wdf\\kmdf\\1.35"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: true,
+        Reason: ""
+  },
+  <5> main.EnvVar {
+          Name: "CMAKE_LIBRARY_PATH",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\lib",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\lib\\x64",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\lib\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\km\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\um\\x64"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: true,
+        Reason: ""
+  },
+  <6> main.EnvVar {
+          Name: "ComSpec",
+         Value: "%SystemRoot%\\system32\\cmd.exe",
+          Type: "EXPAND_SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <7> main.EnvVar {
+          Name: "CXX",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <8> main.EnvVar {
+          Name: "DiaRoot",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <9> main.EnvVar {
+          Name: "DriverData",
+         Value: "C:\\Windows\\System32\\Drivers\\DriverData",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <10> main.EnvVar {
+          Name: "INCLUDE",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\VS\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\include",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km\\crt",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\shared",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\um",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\wdf\\kmdf\\1.35"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: true,
+        Reason: ""
+  },
+  <11> main.EnvVar {
+          Name: "LIB",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\lib",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\lib\\x64",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\lib\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\km\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\um\\x64"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: true,
+        Reason: ""
+  },
+  <12> main.EnvVar {
+          Name: "NUMBER_OF_PROCESSORS",
+         Value: "8",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <13> main.EnvVar {
+          Name: "OS",
+         Value: "Windows_NT",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <14> main.EnvVar {
+          Name: "Path",
+         Value: 
+      "C:\\Program Files\\CMake\\bin",
+      "C:\\Program Files\\Git\\cmd",
+      "C:\\Program Files\\Go\\bin",
+      "D:\\ewdk",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\bin\\10.0.28000.0\\x64"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: true,
+        Reason: ""
+  },
+  <15> main.EnvVar {
+          Name: "PATHEXT",
+         Value: 
+      ".BAT",
+      ".CMD",
+      ".COM",
+      ".EXE",
+      ".JS",
+      ".JSE",
+      ".MSC",
+      ".VBE",
+      ".VBS",
+      ".WSF",
+      ".WSH"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: true,
+        Reason: ""
+  },
+  <16> main.EnvVar {
+          Name: "PROCESSOR_ARCHITECTURE",
+         Value: "AMD64",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <17> main.EnvVar {
+          Name: "PROCESSOR_IDENTIFIER",
+         Value: "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <18> main.EnvVar {
+          Name: "PROCESSOR_LEVEL",
+         Value: "6",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <19> main.EnvVar {
+          Name: "PROCESSOR_REVISION",
+         Value: "8c01",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <20> main.EnvVar {
+          Name: "PSModulePath",
+         Value: 
+      "%ProgramFiles%\\WindowsPowerShell\\Modules",
+      "%SystemRoot%\\system32\\WindowsPowerShell\\v1.0\\Modules"
+    ,
+          Type: "EXPAND_SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <21> main.EnvVar {
+          Name: "RC",
+         Value: "E:\\Program Files\\Windows Kits\\10\\bin\\10.0.28000.0\\x64\\rc.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <22> main.EnvVar {
+          Name: "TEMP",
+         Value: "%SystemRoot%\\TEMP",
+          Type: "EXPAND_SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <23> main.EnvVar {
+          Name: "TMP",
+         Value: "%SystemRoot%\\TEMP",
+          Type: "EXPAND_SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <24> main.EnvVar {
+          Name: "USERNAME",
+         Value: "SYSTEM",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <25> main.EnvVar {
+          Name: "VCToolsInstallDir",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <26> main.EnvVar {
+          Name: "VSINSTALLDIR",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <27> main.EnvVar {
+          Name: "WDKBinRoot",
+         Value: "E:\\Program Files\\Windows Kits\\10\\\\bin\\10.0.28000.0\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <28> main.EnvVar {
+          Name: "WDKContentRoot",
+         Value: "E:\\Program Files\\Windows Kits\\10\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <29> main.EnvVar {
+          Name: "windir",
+         Value: "%SystemRoot%",
+          Type: "EXPAND_SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <30> main.EnvVar {
+          Name: "WindowsTargetPlatformVersion",
+         Value: "10.0.28000.0",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  }
+]
+
+=== USER ENV ===
+[
+  <0> main.EnvVar {
+          Name: "BuildLabSetupRoot",
+         Value: "E:",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <1> main.EnvVar {
+          Name: "CC",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <2> main.EnvVar {
+          Name: "CMAKE_C_COMPILER",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <3> main.EnvVar {
+          Name: "CMAKE_CXX_COMPILER",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <4> main.EnvVar {
+          Name: "CMAKE_INCLUDE_PATH",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\VS\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\include",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km\\crt",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\shared",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\um",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\wdf\\kmdf\\1.35"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <5> main.EnvVar {
+          Name: "CMAKE_LIBRARY_PATH",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\lib",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\lib\\x64",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\lib\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\km\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\um\\x64"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <6> main.EnvVar {
+          Name: "ComSpec",
+         Value: "%SystemRoot%\\system32\\cmd.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <7> main.EnvVar {
+          Name: "CXX",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <8> main.EnvVar {
+          Name: "DiaRoot",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <9> main.EnvVar {
+          Name: "DriverData",
+         Value: "C:\\Windows\\System32\\Drivers\\DriverData",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <10> main.EnvVar {
+          Name: "GOPATH",
+         Value: "%USERPROFILE%\\go",
+          Type: "EXPAND_SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <11> main.EnvVar {
+          Name: "INCLUDE",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\VS\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\include",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\include",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\km\\crt",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\shared",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\10.0.28000.0\\um",
+      "E:\\Program Files\\Windows Kits\\10\\Include\\wdf\\kmdf\\1.35"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <12> main.EnvVar {
+          Name: "LIB",
+         Value: 
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\DIA SDK\\lib",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\ATLMFC\\lib\\x64",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\lib\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\km\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\Lib\\10.0.28000.0\\um\\x64"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <13> main.EnvVar {
+          Name: "NUMBER_OF_PROCESSORS",
+         Value: "8",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <14> main.EnvVar {
+          Name: "OS",
+         Value: "Windows_NT",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <15> main.EnvVar {
+          Name: "Path",
+         Value: 
+      "C:\\Program Files\\CMake\\bin",
+      "C:\\Program Files\\Git\\cmd",
+      "C:\\Program Files\\Go\\bin",
+      "D:\\ewdk",
+      "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64",
+      "E:\\Program Files\\Windows Kits\\10\\bin\\10.0.28000.0\\x64"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <16> main.EnvVar {
+          Name: "PATHEXT",
+         Value: 
+      ".BAT",
+      ".CMD",
+      ".COM",
+      ".EXE",
+      ".JS",
+      ".JSE",
+      ".MSC",
+      ".VBE",
+      ".VBS",
+      ".WSF",
+      ".WSH"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <17> main.EnvVar {
+          Name: "PROCESSOR_ARCHITECTURE",
+         Value: "AMD64",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <18> main.EnvVar {
+          Name: "PROCESSOR_IDENTIFIER",
+         Value: "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <19> main.EnvVar {
+          Name: "PROCESSOR_LEVEL",
+         Value: "6",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <20> main.EnvVar {
+          Name: "PROCESSOR_REVISION",
+         Value: "8c01",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <21> main.EnvVar {
+          Name: "PSModulePath",
+         Value: 
+      "%ProgramFiles%\\WindowsPowerShell\\Modules",
+      "%SystemRoot%\\system32\\WindowsPowerShell\\v1.0\\Modules"
+    ,
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <22> main.EnvVar {
+          Name: "RC",
+         Value: "E:\\Program Files\\Windows Kits\\10\\bin\\10.0.28000.0\\x64\\rc.exe",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <23> main.EnvVar {
+          Name: "TEMP",
+         Value: "%SystemRoot%\\TEMP",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <24> main.EnvVar {
+          Name: "TMP",
+         Value: "%SystemRoot%\\TEMP",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <25> main.EnvVar {
+          Name: "USERNAME",
+         Value: "SYSTEM",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <26> main.EnvVar {
+          Name: "VCToolsInstallDir",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <27> main.EnvVar {
+          Name: "VSINSTALLDIR",
+         Value: "E:\\Program Files\\Microsoft Visual Studio\\2022\\BuildTools\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <28> main.EnvVar {
+          Name: "WDKBinRoot",
+         Value: "E:\\Program Files\\Windows Kits\\10\\\\bin\\10.0.28000.0\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <29> main.EnvVar {
+          Name: "WDKContentRoot",
+         Value: "E:\\Program Files\\Windows Kits\\10\\",
+          Type: "SZ",
+         Valid: true,
+        IsPath: true,
+    IsCompound: false,
+        Reason: ""
+  },
+  <30> main.EnvVar {
+          Name: "windir",
+         Value: "%SystemRoot%",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  },
+  <31> main.EnvVar {
+          Name: "WindowsTargetPlatformVersion",
+         Value: "10.0.28000.0",
+          Type: "SZ",
+         Valid: true,
+        IsPath: false,
+    IsCompound: false,
+        Reason: ""
+  }
+]
