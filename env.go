@@ -44,6 +44,7 @@ type EnvVarList []EnvVar
 
 type EnvManager interface {
 	List() (EnvVarList, error)                                 // 列出所有系统环境变量，含类型、路径有效性校验
+	ListUser() (EnvVarList, error)                             // 列出所有用户环境变量
 	Delete(name string) error                                  // 删除指定系统环境变量
 	Set(name, value string) error                              // 设置/更新系统环境变量（SZ 类型）
 	CreateStartupScript(content, name string) (string, error)  // 将内容写入启动目录生成开机自启脚本，返回完整路径
@@ -63,6 +64,12 @@ type RegistryEnvManager struct{}
 func NewRegistryEnvManager() EnvManager { return &RegistryEnvManager{} }
 
 var taskName = "EWDK_Mount"
+
+const UserEnvPath = `Environment`
+
+func openUserEnvKey(access uint32) (registry.Key, error) {
+	return registry.OpenKey(registry.CURRENT_USER, UserEnvPath, access)
+}
 
 func openEnvKey(access uint32) (registry.Key, error) {
 	return registry.OpenKey(registry.LOCAL_MACHINE, EnvPath, access)
@@ -124,6 +131,58 @@ func (m *RegistryEnvManager) List() (EnvVarList, error) {
 			IsPath:     isPath,
 			IsCompound: isCompound,
 			Reason:     reason,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+	})
+
+	return result, nil
+}
+
+func (m *RegistryEnvManager) ListUser() (EnvVarList, error) {
+	key, err := openUserEnvKey(registry.QUERY_VALUE | registry.ENUMERATE_SUB_KEYS)
+	if err != nil {
+		return nil, fmt.Errorf("open registry key: %w", err)
+	}
+	defer key.Close()
+
+	names, err := key.ReadValueNames(-1)
+	if err != nil && err.Error() != "EOF" {
+		return nil, fmt.Errorf("read value names: %w", err)
+	}
+
+	var result EnvVarList
+	for _, name := range names {
+		_, valType, err := key.GetValue(name, nil)
+		if err != nil {
+			continue
+		}
+		var val string
+		switch valType {
+		case registry.SZ, registry.EXPAND_SZ:
+			s, _, e := key.GetStringValue(name)
+			if e != nil {
+				continue
+			}
+			val = s
+		default:
+			n, _, e := key.GetValue(name, make([]byte, 0))
+			if e != nil {
+				val = fmt.Sprintf("<type=%d>", valType)
+			} else {
+				val = fmt.Sprintf("<%d bytes type=%d>", n, valType)
+			}
+		}
+
+		typeName := typeToString(valType)
+		result = append(result, EnvVar{
+			Name:   name,
+			Value:  val,
+			Type:   typeName,
+			Valid:  true,
+			IsPath: looksLikePath(val),
 		})
 	}
 

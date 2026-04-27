@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ddkwork/golibrary/std/mylog"
+	"github.com/ddkwork/golibrary/std/mylog/pretty"
 	"github.com/ddkwork/golibrary/std/stream"
 	"golang.org/x/sys/windows/registry"
 )
@@ -67,6 +69,8 @@ func main() {
 	all := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(all)
 	setEwdkEnvToSystem(mgr, all)
+	syncEwdkEnvToUser(mgr, all)
+	saveEnvToFile(mgr)
 
 
 
@@ -159,4 +163,62 @@ func setEwdkEnvToSystem(mgr EnvManager, env ewdkEnv) {
 			fmt.Printf("  [OK]   %s=%s\n", name, value)
 		}
 	}
+}
+
+func syncEwdkEnvToUser(mgr EnvManager, env ewdkEnv) {
+	userKey, err := openUserEnvKey(registry.SET_VALUE)
+	if err != nil {
+		fmt.Printf("  [FAIL] open user env: %v\n", err)
+		return
+	}
+	defer userKey.Close()
+
+	systemVars, err := mgr.List()
+	if err != nil {
+		fmt.Printf("  [FAIL] list system env: %v\n", err)
+		return
+	}
+
+	for _, ev := range systemVars {
+		if ev.Type != "SZ" && ev.Type != "EXPAND_SZ" {
+			continue
+		}
+		_, _, userErr := userKey.GetStringValue(ev.Name)
+		if userErr == nil {
+			continue
+		}
+		if err := userKey.SetStringValue(ev.Name, ev.Value); err != nil {
+			fmt.Printf("  [FAIL] UserEnv Set %s: %v\n", ev.Name, err)
+		} else {
+			fmt.Printf("  [OK]   UserEnv %s=%s\n", ev.Name, ev.Value)
+		}
+	}
+}
+
+func saveEnvToFile(mgr EnvManager) {
+	systemVars, err := mgr.List()
+	if err != nil {
+		fmt.Printf("  [FAIL] list system env: %v\n", err)
+		return
+	}
+	userVars, err := mgr.ListUser()
+	if err != nil {
+		fmt.Printf("  [FAIL] list user env: %v\n", err)
+		return
+	}
+
+	filename := filepath.Join(".", "ewdk-env-"+strings.ReplaceAll(time.Now().Format("20060102-150405"), ":", "")+".txt")
+	f, err := os.Create(filename)
+	if err != nil {
+		fmt.Printf("  [FAIL] create file: %v\n", err)
+		return
+	}
+	defer f.Close()
+
+	fmt.Fprintln(f, "=== SYSTEM ENV ===")
+	pretty.PrintTo(f, systemVars, true)
+	fmt.Fprintln(f, "\n=== USER ENV ===")
+	pretty.PrintTo(f, userVars, true)
+
+	fmt.Printf("  [OK]   env saved to: %s\n", filename)
 }
