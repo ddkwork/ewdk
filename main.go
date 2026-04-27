@@ -38,6 +38,8 @@ type ewdkCommonEnv struct {
 	CC                           string
 	RC                           string
 	MT                           string
+	SignTool                     string
+	NTDDKFile                    string
 	NinjaDir                     string
 }
 
@@ -55,8 +57,6 @@ type ewdkEnv struct {
 	Common ewdkCommonEnv
 	KM     ewdkKMEnv
 	UM     ewdkUMEnv
-	INCLUDE []string
-	LIB     []string
 }
 
 func main() {
@@ -248,6 +248,8 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	cc := filepath.Join(result[EnvVCToolsInstallDir], "bin\\Hostx64\\x64\\cl.exe")
 	rc := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "rc.exe")
 	mt := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "mt.exe")
+	signtool := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "signtool.exe")
+	ntddkFile := filepath.Join(result[EnvWDKContentRoot], "Include", result[EnvWindowsTargetPlatformVersion], "km", "ntddk.h")
 	ninjaDir, _ := filepath.Abs(filepath.Dir("ninja.exe"))
 
 	common := ewdkCommonEnv{
@@ -265,12 +267,19 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	if _, err := os.Stat(mt); err == nil {
 		common.MT = mt
 	}
+	if _, err := os.Stat(signtool); err == nil {
+		common.SignTool = signtool
+	}
+	if _, err := os.Stat(ntddkFile); err == nil {
+		common.NTDDKFile = ntddkFile
+	}
 
 	km := ewdkKMEnv{
 		IncludeDirs: []string{
 			filepath.Join(pre, "shared"),
 			filepath.Join(pre, "km"),
 			filepath.Join(pre, "km", "crt"),
+			filepath.Join(result[EnvWDKContentRoot], "Include", "wdf", "kmdf", "1.35"),
 		},
 		LibDirs: []string{
 			filepath.Join(result[EnvWDKContentRoot], "Lib", result[EnvWindowsTargetPlatformVersion], "km", "x64"),
@@ -286,30 +295,10 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 		LibDirs: append([]string{umLib, ucrtLib}, vcLib...),
 	}
 
-	include := strings.Split(result[EnvINCLUDE], ";")
-	lib := strings.Split(result[EnvLIB], ";")
-
-	include = append(include,
-		filepath.Join(DiaRoot, "include"),
-		filepath.Join(pre, "km"),
-		filepath.Join(pre, "km", "crt"),
-		filepath.Join(pre, "um"),
-		filepath.Join(pre, "shared"),
-		filepath.Join(result[EnvWDKContentRoot], "Include\\wdf\\kmdf\\1.35"),
-	)
-
-	lib = append(lib,
-		filepath.Join(DiaRoot, "lib"),
-		filepath.Join(result[EnvWDKContentRoot], "Lib", result[EnvWindowsTargetPlatformVersion], "km", "x64"),
-		filepath.Join(result[EnvWDKContentRoot], "Lib", result[EnvWindowsTargetPlatformVersion], "um", "x64"),
-	)
-
 	return ewdkEnv{
-		Common:  common,
-		KM:      km,
-		UM:      um,
-		INCLUDE: include,
-		LIB:     lib,
+		Common: common,
+		KM:     km,
+		UM:     um,
 	}, nil
 }
 
@@ -351,6 +340,12 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	if c.MT != "" {
 		cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_MT \"%s\")\n", cm(c.MT)))
 	}
+	if c.SignTool != "" {
+		cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_SIGNTOOL \"%s\")\n", cm(c.SignTool)))
+	}
+	if c.NTDDKFile != "" {
+		cmake.WriteString(fmt.Sprintf("set(EWDK_COMMON_NTDDK_FILE \"%s\")\n", cm(c.NTDDKFile)))
+	}
 
 	cmake.WriteString("\n# ---- KM (Kernel-Mode) ----\n")
 	writeDirs(&cmake, "EWDK_KM_INCLUDE_DIRS", env.KM.IncludeDirs)
@@ -360,16 +355,12 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	writeDirs(&cmake, "EWDK_UM_INCLUDE_DIRS", env.UM.IncludeDirs)
 	writeDirs(&cmake, "EWDK_UM_LIB_DIRS", env.UM.LibDirs)
 
-	cmake.WriteString("\n# ---- Legacy env vars ----\n")
-	writeDirs(&cmake, "EWDK_INCLUDE", env.INCLUDE)
-	writeDirs(&cmake, "EWDK_LIB", env.LIB)
-
 	cmake.WriteString("\n# ---- Compiler / Linker ----\n")
 	cmake.WriteString("set(CMAKE_C_COMPILER \"${EWDK_COMMON_CC}\" CACHE FILEPATH \"\" FORCE)\n")
 	cmake.WriteString("set(CMAKE_CXX_COMPILER \"${EWDK_COMMON_CXX}\" CACHE FILEPATH \"\" FORCE)\n")
 	cmake.WriteString("set(CMAKE_RC_COMPILER \"${EWDK_COMMON_RC}\" CACHE FILEPATH \"\" FORCE)\n")
-	cmake.WriteString("set(CMAKE_INCLUDE_PATH \"${EWDK_INCLUDE}\" CACHE STRING \"\" FORCE)\n")
-	cmake.WriteString("set(CMAKE_LIBRARY_PATH \"${EWDK_LIB}\" CACHE STRING \"\" FORCE)\n")
+	cmake.WriteString("set(CMAKE_INCLUDE_PATH \"${EWDK_KM_INCLUDE_DIRS};${EWDK_UM_INCLUDE_DIRS}\" CACHE STRING \"\" FORCE)\n")
+	cmake.WriteString("set(CMAKE_LIBRARY_PATH \"${EWDK_KM_LIB_DIRS};${EWDK_UM_LIB_DIRS}\" CACHE STRING \"\" FORCE)\n")
 
 	cmake.WriteString("\nlist(APPEND CMAKE_PROGRAM_PATH \"${EWDK_COMMON_NINJA_DIR}\")\n")
 	cmake.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.CC))))
@@ -381,8 +372,8 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	}
 
 	cmake.WriteString("\nset(ENV{WDKContentRoot} \"${EWDK_COMMON_WDKContentRoot}\")\n")
-	cmake.WriteString("set(ENV{INCLUDE} \"${EWDK_INCLUDE}\")\n")
-	cmake.WriteString("set(ENV{LIB} \"${EWDK_LIB}\")\n")
+	cmake.WriteString("set(ENV{INCLUDE} \"${EWDK_KM_INCLUDE_DIRS};${EWDK_UM_INCLUDE_DIRS}\")\n")
+	cmake.WriteString("set(ENV{LIB} \"${EWDK_KM_LIB_DIRS};${EWDK_UM_LIB_DIRS}\")\n")
 
 	return os.WriteFile(outputPath, []byte(cmake.String()), 0644)
 }

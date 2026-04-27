@@ -19,32 +19,32 @@
 #                          if not set, the value will be automatically calculated by WINVER
 #        (default value is left blank and can be changed per target or globally)
 
-if(DEFINED EWDK_COMMON_WDKContentRoot)
+if(DEFINED EWDK_COMMON_NTDDK_FILE)
+    set(WDK_LATEST_NTDDK_FILE "${EWDK_COMMON_NTDDK_FILE}")
     set(_WDK_ROOT "${EWDK_COMMON_WDKContentRoot}")
     set(WDK_VERSION "${EWDK_COMMON_WindowsTargetPlatformVersion}")
     set(WDK_INC_VERSION "${EWDK_COMMON_WindowsTargetPlatformVersion}")
     set(WDK_LIB_VERSION "${EWDK_COMMON_WindowsTargetPlatformVersion}")
-    file(GLOB WDK_NTDDK_FILES
-        "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/km/ntddk.h"
-    )
-elseif(DEFINED ENV{WDKContentRoot})
-    string(REGEX REPLACE "[\\/]$" "" _WDK_ROOT "$ENV{WDKContentRoot}")
-    file(GLOB WDK_NTDDK_FILES
-        "${_WDK_ROOT}/Include/*/km/ntddk.h"
-        "${_WDK_ROOT}/Include/km/ntddk.h"
-    )
 else()
-    file(GLOB WDK_NTDDK_FILES
-        "C:/Program Files*/Windows Kits/*/Include/*/km/ntddk.h"
-        "C:/Program Files*/Windows Kits/*/Include/km/ntddk.h"
-    )
-endif()
-
-if(WDK_NTDDK_FILES)
-    if (NOT CMAKE_VERSION VERSION_LESS 3.18.0)
-        list(SORT WDK_NTDDK_FILES COMPARE NATURAL)
+    if(DEFINED ENV{WDKContentRoot})
+        string(REGEX REPLACE "[\\/]$" "" _WDK_ROOT "$ENV{WDKContentRoot}")
+        file(GLOB WDK_NTDDK_FILES
+            "${_WDK_ROOT}/Include/*/km/ntddk.h"
+            "${_WDK_ROOT}/Include/km/ntddk.h"
+        )
+    else()
+        file(GLOB WDK_NTDDK_FILES
+            "C:/Program Files*/Windows Kits/*/Include/*/km/ntddk.h"
+            "C:/Program Files*/Windows Kits/*/Include/km/ntddk.h"
+        )
     endif()
-    list(GET WDK_NTDDK_FILES -1 WDK_LATEST_NTDDK_FILE)
+
+    if(WDK_NTDDK_FILES)
+        if (NOT CMAKE_VERSION VERSION_LESS 3.18.0)
+            list(SORT WDK_NTDDK_FILES COMPARE NATURAL)
+        endif()
+        list(GET WDK_NTDDK_FILES -1 WDK_LATEST_NTDDK_FILE)
+    endif()
 endif()
 
 include(FindPackageHandleStandardArgs)
@@ -171,6 +171,9 @@ else()
         )
 endif()
 
+set(CMAKE_INCLUDE_PATH "${_KM_INCLUDE_DIRS};${_UM_INCLUDE_DIRS}" CACHE STRING "" FORCE)
+set(CMAKE_LIBRARY_PATH "${_KM_LIB_DIRS};${_UM_LIB_DIRS}" CACHE STRING "" FORCE)
+
 string(CONCAT WDK_LINK_FLAGS
     "/MANIFEST:NO "
     "/DRIVER "
@@ -249,11 +252,7 @@ function(wdk_add_driver _target)
     endif()
 
     if(WDK_TEST_SIGN)
-        if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-            set(WDK_SIGNTOOL_PATH "${EWDK_COMMON_WDKContentRoot}/bin/${WDK_VERSION}/x86/signtool.exe")
-        else()
-            set(WDK_SIGNTOOL_PATH "${EWDK_COMMON_WDKContentRoot}/bin/${WDK_VERSION}/x64/signtool.exe")
-        endif()
+        set(WDK_SIGNTOOL_PATH "${EWDK_COMMON_SIGNTOOL}")
         add_custom_command(TARGET ${_target} POST_BUILD
             COMMAND ${WDK_SIGNTOOL_PATH} sign /fd SHA256 /s My /n ${WDK_TEST_SIGN_NAME} /t http://timestamp.digicert.com $<TARGET_FILE:${_target}>
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
