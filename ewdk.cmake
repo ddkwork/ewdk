@@ -40,7 +40,7 @@ set(ENV{LIB} "${WDK_KM_LIB_DIRS};${WDK_UM_LIB_DIRS}")
 set(WDK_WINVER "0x0601" CACHE STRING "Default WINVER for WDK targets")
 set(WDK_NTDDI_VERSION "" CACHE STRING "Specified NTDDI_VERSION for WDK targets if needed")
 set(KM_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
-set(KM_TEST_SIGN_NAME "HyperDbgTest" CACHE STRING "Certificate name for test signing")
+set(KM_TEST_SIGN_NAME "WDKTestCert" CACHE STRING "Certificate name for test signing")
 
 set(KM_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
 file(WRITE ${KM_ADDITIONAL_FLAGS_FILE} "#pragma runtime_checks(\"suc\", off)")

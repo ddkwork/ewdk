@@ -99,7 +99,7 @@ func main() {
 
 const isoPath = `d:\ewdk\EWDK_br_release_28000_251103-1709.iso`
 
-const testSignCertName = "HyperDbgTest"
+const testSignCertName = "WDKTestCert"
 
 func ensureTestCertificate() {
 	script := fmt.Sprintf(`$cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.Subject -match 'CN=%s' }; if ($cert) { Write-Host 'EXISTS' } else { Write-Host 'NOT_FOUND' }`, testSignCertName)
@@ -363,7 +363,7 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString("set(WDK_WINVER \"0x0601\" CACHE STRING \"Default WINVER for WDK targets\")\n")
 	b.WriteString("set(WDK_NTDDI_VERSION \"\" CACHE STRING \"Specified NTDDI_VERSION for WDK targets if needed\")\n")
 	b.WriteString("set(KM_TEST_SIGN ON CACHE BOOL \"Enable test signing for drivers\")\n")
-	b.WriteString("set(KM_TEST_SIGN_NAME \"HyperDbgTest\" CACHE STRING \"Certificate name for test signing\")\n")
+	b.WriteString("set(KM_TEST_SIGN_NAME \"WDKTestCert\" CACHE STRING \"Certificate name for test signing\")\n")
 
 	b.WriteString(`
 set(KM_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
