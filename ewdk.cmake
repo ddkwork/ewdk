@@ -20,7 +20,7 @@
 #        (default value is left blank and can be changed per target or globally)
 
 if(DEFINED EWDK_WDKContentRoot)
-    string(REGEX REPLACE "[\\/]$" "" _WDK_ROOT "${EWDK_WDKContentRoot}")
+    set(_WDK_ROOT "${EWDK_WDKContentRoot}")
     set(WDK_VERSION "${EWDK_WindowsTargetPlatformVersion}")
     set(WDK_INC_VERSION "${EWDK_WindowsTargetPlatformVersion}")
     set(WDK_LIB_VERSION "${EWDK_WindowsTargetPlatformVersion}")
@@ -91,7 +91,7 @@ if(NOT WDK_FIND_QUIETLY)
     message(STATUS "WDK_VERSION: " ${WDK_VERSION})
 endif()
 
-string(REGEX REPLACE "[\\/]$" "" _WDK_ROOT "${WDK_ROOT}")
+set(_WDK_ROOT "${WDK_ROOT}")
 
 set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
 set(CMAKE_CXX_COMPILER_WORKS 1 CACHE INTERNAL "")
@@ -140,29 +140,19 @@ if(NOT WDK_PLATFORM)
     list(APPEND WDK_COMPILE_DEFINITIONS "_AMD64_;AMD64")
 endif()
 
-set(_UCRT_INC "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/ucrt")
-set(_UCRT_LIB "${_WDK_ROOT}/Lib/${WDK_VERSION}/ucrt/${WDK_PLATFORM}")
+if(DEFINED EWDK_UCRT_INC)
+    set(_UCRT_INC "${EWDK_UCRT_INC}")
+    set(_UCRT_LIB "${EWDK_UCRT_LIB}")
+else()
+    set(_UCRT_INC "${_WDK_ROOT}/Include/${WDK_INC_VERSION}/ucrt")
+    set(_UCRT_LIB "${_WDK_ROOT}/Lib/${WDK_VERSION}/ucrt/${WDK_PLATFORM}")
+endif()
 list(APPEND CMAKE_INCLUDE_PATH ${_UCRT_INC})
 list(APPEND CMAKE_LIBRARY_PATH ${_UCRT_LIB})
 
-if(DEFINED EWDK_VCToolsInstallDir)
-    set(_VC_INC_DIRS
-        "${EWDK_VCToolsInstallDir}include"
-        "${EWDK_VCToolsInstallDir}ATLMFC/include"
-        )
-    if(DEFINED EWDK_VSINSTALLDIR)
-        list(APPEND _VC_INC_DIRS "${EWDK_VSINSTALLDIR}VC/Auxiliary/VS/include")
-    endif()
-    if(DEFINED EWDK_DiaRoot)
-        list(APPEND _VC_INC_DIRS "${EWDK_DiaRoot}/include")
-    endif()
-    set(_VC_LIB_DIRS
-        "${EWDK_VCToolsInstallDir}lib/x64"
-        "${EWDK_VCToolsInstallDir}ATLMFC/lib/x64"
-        )
-    if(DEFINED EWDK_DiaRoot)
-        list(APPEND _VC_LIB_DIRS "${EWDK_DiaRoot}/lib")
-    endif()
+if(DEFINED EWDK_VC_INC_DIRS)
+    set(_VC_INC_DIRS "${EWDK_VC_INC_DIRS}")
+    set(_VC_LIB_DIRS "${EWDK_VC_LIB_DIRS}")
 endif()
 
 string(CONCAT WDK_LINK_FLAGS
