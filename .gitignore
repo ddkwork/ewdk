@@ -9,5 +9,3 @@ back/
 *.iso
 /build_debug/
 ewdk.exe
-*.txt
-env_test.go
