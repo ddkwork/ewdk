@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -75,7 +76,12 @@ func main() {
 	broadcastEnvChange()
 	saveEnvToFile(mgr)
 
-
+	cc := os.Getenv("CC")
+	if cc != "" {
+		mylog.Success("CC = ", cc)
+	} else {
+		fmt.Println("CC not set")
+	}
 
 	mylog.Success("Build complete")
 }
@@ -250,4 +256,23 @@ func broadcastEnvChange() {
 		0,
 	)
 	fmt.Printf("  [OK]   broadcast WM_SETTINGCHANGE\n")
+
+	exec.Command("taskkill", "/F", "/IM", "explorer.exe").Run()
+	time.Sleep(time.Second)
+	exec.Command("explorer.exe").Start()
+	fmt.Printf("  [OK]   restart explorer\n")
+}
+
+func getEnvFromRegistry(name string) string {
+	key, err := openEnvKey(registry.QUERY_VALUE)
+	if err != nil {
+		return ""
+	}
+	defer key.Close()
+
+	val, _, err := key.GetStringValue(name)
+	if err != nil {
+		return ""
+	}
+	return val
 }
