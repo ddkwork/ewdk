@@ -39,27 +39,27 @@ set(ENV{LIB} "${WDK_KM_LIB_DIRS};${WDK_UM_LIB_DIRS}")
 # ---- WDK Settings ----
 set(WDK_WINVER "0x0601" CACHE STRING "Default WINVER for WDK targets")
 set(WDK_NTDDI_VERSION "" CACHE STRING "Specified NTDDI_VERSION for WDK targets if needed")
-set(WDK_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
-set(WDK_TEST_SIGN_NAME "HyperDbgTest" CACHE STRING "Certificate name for test signing")
+set(KM_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
+set(KM_TEST_SIGN_NAME "HyperDbgTest" CACHE STRING "Certificate name for test signing")
 
-set(WDK_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
-file(WRITE ${WDK_ADDITIONAL_FLAGS_FILE} "#pragma runtime_checks(\"suc\", off)")
+set(KM_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
+file(WRITE ${KM_ADDITIONAL_FLAGS_FILE} "#pragma runtime_checks(\"suc\", off)")
 
-set(WDK_COMPILE_FLAGS
+set(KM_COMPILE_FLAGS
     "/Zp8"
     "/GF"
     "/GR-"
     "/Gz"
     "/kernel"
     "/FIwarning.h"
-    "/FI${WDK_ADDITIONAL_FLAGS_FILE}"
+    "/FI${KM_ADDITIONAL_FLAGS_FILE}"
     "/Oi"
     )
 
-set(WDK_COMPILE_DEFINITIONS "WINNT=1;_AMD64_;AMD64")
-set(WDK_COMPILE_DEFINITIONS_DEBUG "MSC_NOOPT;DEPRECATE_DDK_FUNCTIONS=1;DBG=1")
+set(KM_COMPILE_DEFINITIONS "WINNT=1;_AMD64_;AMD64")
+set(KM_COMPILE_DEFINITIONS_DEBUG "MSC_NOOPT;DEPRECATE_DDK_FUNCTIONS=1;DBG=1")
 
-string(CONCAT WDK_LINK_FLAGS
+string(CONCAT KM_LINK_FLAGS
     "/MANIFEST:NO "
     "/DRIVER "
     "/OPT:REF "
@@ -73,31 +73,31 @@ string(CONCAT WDK_LINK_FLAGS
     "/VERSION:10.0 "
     )
 
-# ---- WDK Libraries ----
-file(GLOB WDK_LIB_FILES "F:/Program Files/Windows Kits/10/Lib/10.0.28000.0/km/x64/*.lib")
-foreach(LIB_FILE ${WDK_LIB_FILES})
+# ---- KM Libraries ----
+file(GLOB KM_LIB_FILES "F:/Program Files/Windows Kits/10/Lib/10.0.28000.0/km/x64/*.lib")
+foreach(LIB_FILE ${KM_LIB_FILES})
     get_filename_component(LIB_NAME ${LIB_FILE} NAME_WE)
     string(TOUPPER ${LIB_NAME} LIB_NAME)
     add_library(WDK::${LIB_NAME} INTERFACE IMPORTED)
     set_property(TARGET WDK::${LIB_NAME} PROPERTY INTERFACE_LINK_LIBRARIES ${LIB_FILE})
 endforeach()
 
-set(WDK_SIGNTOOL_PATH "F:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/signtool.exe")
+set(KM_SIGNTOOL_PATH "F:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/signtool.exe")
 
 
-# ---- WDK Functions ----
+# ---- KM/UM Functions ----
 
-function(wdk_add_driver _target)
+function(km_sys _target)
     cmake_parse_arguments(WDK "" "KMDF;WINVER;NTDDI_VERSION" "" ${ARGN})
 
     add_executable(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
     set_target_properties(${_target} PROPERTIES SUFFIX ".sys")
-    set_target_properties(${_target} PROPERTIES COMPILE_OPTIONS "${WDK_COMPILE_FLAGS}")
+    set_target_properties(${_target} PROPERTIES COMPILE_OPTIONS "${KM_COMPILE_FLAGS}")
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "${WDK_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${WDK_COMPILE_DEFINITIONS_DEBUG}>;_WIN32_WINNT=${WDK_WINVER}"
+        "${KM_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${KM_COMPILE_DEFINITIONS_DEBUG}>;_WIN32_WINNT=${WDK_WINVER}"
         )
-    set_target_properties(${_target} PROPERTIES LINK_FLAGS "${WDK_LINK_FLAGS}")
+    set_target_properties(${_target} PROPERTIES LINK_FLAGS "${KM_LINK_FLAGS}")
     set_target_properties(${_target} PROPERTIES LINK_INTERFACE_LIBRARIES "")
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -124,24 +124,24 @@ function(wdk_add_driver _target)
         set_property(TARGET ${_target} APPEND_STRING PROPERTY LINK_FLAGS "/ENTRY:GsDriverEntry")
     endif()
 
-    if(WDK_TEST_SIGN AND DEFINED WDK_SIGNTOOL_PATH)
+    if(KM_TEST_SIGN AND DEFINED KM_SIGNTOOL_PATH)
         add_custom_command(TARGET ${_target} POST_BUILD
-            COMMAND ${WDK_SIGNTOOL_PATH} sign /fd SHA256 /s My /n ${WDK_TEST_SIGN_NAME} /t http://timestamp.digicert.com $<TARGET_FILE:${_target}>
+            COMMAND ${KM_SIGNTOOL_PATH} sign /fd SHA256 /s My /n ${KM_TEST_SIGN_NAME} /t http://timestamp.digicert.com $<TARGET_FILE:${_target}>
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "Signing driver with test certificate: ${WDK_TEST_SIGN_NAME}"
+            COMMENT "Signing driver with test certificate: ${KM_TEST_SIGN_NAME}"
             VERBATIM
         )
     endif()
 endfunction()
 
-function(wdk_add_library _target)
+function(km_lib _target)
     cmake_parse_arguments(WDK "" "KMDF;WINVER;NTDDI_VERSION" "" ${ARGN})
 
     add_library(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
-    set_target_properties(${_target} PROPERTIES COMPILE_OPTIONS "${WDK_COMPILE_FLAGS}")
+    set_target_properties(${_target} PROPERTIES COMPILE_OPTIONS "${KM_COMPILE_FLAGS}")
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "${WDK_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${WDK_COMPILE_DEFINITIONS_DEBUG};>_WIN32_WINNT=${WDK_WINVER}"
+        "${KM_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${KM_COMPILE_DEFINITIONS_DEBUG};>_WIN32_WINNT=${WDK_WINVER}"
         )
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -154,7 +154,7 @@ function(wdk_add_library _target)
     endif()
 endfunction()
 
-function(wdk_add_executable _target)
+function(um_exe _target)
     cmake_parse_arguments(WDK "" "SUBSYSTEM;WINVER;NTDDI_VERSION" "" ${ARGN})
 
     if(NOT WDK_SUBSYSTEM)
@@ -185,7 +185,7 @@ function(wdk_add_executable _target)
     target_link_libraries(${_target} kernel32.lib user32.lib)
 endfunction()
 
-function(um_library _target)
+function(um_lib _target)
     cmake_parse_arguments(WDK "" "WINVER;NTDDI_VERSION" "" ${ARGN})
 
     add_library(${_target} ${WDK_UNPARSED_ARGUMENTS})
