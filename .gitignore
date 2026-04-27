@@ -1,5 +1,13 @@
+*.cmd
+log.log
+.idea
+/bug.log
+dist/
+cmake-build-debug
+build/
+back/
+*.iso
+/build_debug/
 ewdk.exe
 *.txt
-*.iso
 env_test.go
-.idea/
