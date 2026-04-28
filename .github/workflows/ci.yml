@@ -115,3 +115,4 @@ jobs:
             Branch: ${{ github.ref_name }}
           draft: false
           prerelease: true
+          replace_existing: true
