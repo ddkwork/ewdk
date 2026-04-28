@@ -60,25 +60,12 @@ jobs:
       - name: Mount ISO and generate ewdk-env.cmake
         run: |
           go run .
-          
-          # 创建固定路径符号链接（关键！）
-          $ewdkDir = Get-Location
-          Write-Host "Current directory: $ewdkDir"
-          
-          if (Test-Path "D:\ewdk") {
-              Remove-Item "D:\ewdk" -Force -Recurse
-          }
-          New-Item -ItemType Junction -Path "D:\ewdk" -Target $ewdkDir
-          Write-Host "Created junction: D:\ewdk -> $ewdkDir"
-          
-          # 验证符号链接
-          dir D:\ewdk
 
       - name: Build Release and Debug
         run: |
-          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release .
+          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DKM_TEST_SIGN=OFF .
           cmake --build build --config Release
-          cmake -B build_debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug .
+          cmake -B build_debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DKM_TEST_SIGN=OFF .
           cmake --build build_debug --config Debug
 
   release:
