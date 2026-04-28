@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -93,6 +94,11 @@ func main() {
 	mylog.Success("Generated: ", cmakePath)
 
 	ensureTestCertificate()
+
+	envJSONPath := `d:\ewdk\ewdk.env.json`
+	envData := mylog.Check2(json.MarshalIndent(env, "", "  "))
+	mylog.Check(os.WriteFile(envJSONPath, envData, 0644))
+	mylog.Success("Generated: ", envJSONPath)
 
 	mylog.Success("Environment ready. Run build.bat to start building.")
 }

@@ -9,4 +9,3 @@ back/
 *.iso
 /build_debug/
 ewdk.exe
-ewdk-env.cmake
