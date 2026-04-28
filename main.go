@@ -88,7 +88,7 @@ func main() {
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
 
-	cmakePath := filepath.Join(".", ewdkCmakeGenerated)
+	cmakePath := `d:\ewdk\` + ewdkCmakeGenerated
 	mylog.Check(generateEwdkCmake(env, cmakePath))
 	mylog.Success("Generated: ", cmakePath)
 

@@ -62,34 +62,34 @@ The `ewdk.cmake` module provides:
 ### Kernel Mode Functions
 
 ```cmake
-wdk_add_driver(target [KMDF version] sources...)
-wdk_add_library(target [STATIC|SHARED] [KMDF version] sources...)
+km_sys(target [KMDF version] sources...)
+km_lib(target [KMDF version] sources...)
 ```
 
 **Example:**
 ```cmake
-wdk_add_driver(MyDriver KMDF 1.15 main.c)
-wdk_add_library(MyLib STATIC main.c)
+km_sys(MyDriver KMDF 1.15 main.c)
+km_lib(MyLib main.c)
 ```
 
 ### User Mode Functions
 
 ```cmake
-wdk_add_executable(target [SUBSYSTEM CONSOLE|WINDOWS] sources...)
-um_library(target sources...)
+um_exe(target [SUBSYSTEM CONSOLE|WINDOWS] sources...)
+um_lib(target sources...)
 um_dll(target sources...)
 ```
 
 **Examples:**
 ```cmake
 # Console application
-wdk_add_executable(MyApp SUBSYSTEM WINCON main.c)
+um_exe(MyApp SUBSYSTEM CONSOLE main.c)
 
 # Windows GUI application
-wdk_add_executable(MyGuiApp SUBSYSTEM WIN main.cpp)
+um_exe(MyGuiApp SUBSYSTEM WIN main.cpp)
 
 # Static library
-um_library(MyLib utils.c)
+um_lib(MyLib utils.c)
 
 # DLL
 um_dll(MyPlugin plugin.c)
@@ -109,8 +109,8 @@ Set in environment or CMake cache:
 |----------|---------|-------------|
 | `WDKContentRoot` | Auto-detected | WDK installation root |
 | `WDK_WINVER` | `0x0601` | Target Windows version (Win7) |
-| `WDK_TEST_SIGN` | `ON` | Enable automatic test signing for kernel drivers |
-| `WDK_TEST_SIGN_NAME` | `HyperDbgTest` | Certificate name for test signing |
+| `KM_TEST_SIGN` | `ON` | Enable automatic test signing for kernel drivers |
+| `KM_TEST_SIGN_NAME` | `WDKTestCert` | Certificate name for test signing |
 
 ## Output Files
 

@@ -29,15 +29,15 @@ d:\ewdk\
 │                       #   - runSetupBuildEnv: 执行 SetupBuildEnv.cmd amd64，解析环境变量
 │                       #   - generateEwdkCmake: 生成完整 ewdk.cmake（环境变量+编译参数+函数）
 ├── ewdk.cmake          # [自动生成] 完整的 WDK 构建模块（环境变量+编译参数+库+函数）
-├── CMakeLists.txt      # 根 CMake（仅 include(ewdk.cmake)）
+├── CMakeLists.txt      # 根 CMake（include(d:/ewdk/ewdk.cmake)）
 ├── build.bat           # 一键构建脚本
 ├── ninja.exe           # Ninja 构建工具
 ├── scripts/
 │   └── get_ewdk_url.go # 获取 EWDK ISO 下载链接
 └── demo/               # 示例工程
-    ├── kernel/         # wdk_add_driver → .sys
-    ├── um-exe/         # wdk_add_executable → .exe
-    ├── um-lib/         # um_library → .lib
+    ├── kernel/         # km_sys → .sys
+    ├── um-exe/         # um_exe → .exe
+    ├── um-lib/         # um_lib → .lib
     └── um-dll/         # um_dll → .dll
 ```
 
@@ -112,10 +112,10 @@ Go 一次性生成完整的 `ewdk.cmake`，包含：
 - **KM**: `WDK_KM_INCLUDE_DIRS` / `WDK_KM_LIB_DIRS`
 - **UM**: `WDK_UM_INCLUDE_DIRS` / `WDK_UM_LIB_DIRS`
 - **Compiler**: `CMAKE_C_COMPILER` / `CMAKE_RC_COMPILER` / `CMAKE_MT` 等
-- **Settings**: `WDK_COMPILE_FLAGS` / `WDK_COMPILE_DEFINITIONS` / `WDK_LINK_FLAGS`
+- **Settings**: `KM_COMPILE_FLAGS` / `KM_COMPILE_DEFINITIONS` / `KM_LINK_FLAGS`
 - **Libraries**: `file(GLOB)` + `foreach` 循环自动注册所有 `WDK::*` 库
-- **Functions**: `wdk_add_driver` / `wdk_add_library` / `wdk_add_executable` / `um_library` / `um_dll`
-- **SignTool**: `WDK_SIGNTOOL_PATH`（由 Go 动态查找 signtool.exe）
+- **Functions**: `km_sys` / `km_lib` / `um_exe` / `um_lib` / `um_dll`
+- **SignTool**: `KM_SIGNTOOL_PATH`（由 Go 动态查找 signtool.exe）
 
 ### Step 4: 提示用户构建
 
@@ -123,7 +123,7 @@ Go 一次性生成完整的 `ewdk.cmake`，包含：
 mylog.Success("Environment ready. Run build.bat to start building.")
 ```
 
-ewdk.exe 只负责环境准备，不直接调用构建。用户运行 `build.bat`（或手动 cmake 命令）时，`CMakeLists.txt` 直接 `include(ewdk.cmake)`，所有变量和函数已就绪。
+ewdk.exe 只负责环境准备，不直接调用构建。用户运行 `build.bat`（或手动 cmake 命令）时，`CMakeLists.txt` 直接 `include(d:/ewdk/ewdk.cmake)`，所有变量和函数已就绪。
 
 ## ewdk.cmake 结构（Go 生成）
 
@@ -152,24 +152,24 @@ set(CMAKE_C_STANDARD_LIBRARIES "")
 set(CMAKE_CXX_STANDARD_LIBRARIES "")
 
 # ---- WDK Settings ----
-set(WDK_COMPILE_FLAGS ...)
-set(WDK_COMPILE_DEFINITIONS "WINNT=1;_AMD64_;AMD64")
-set(WDK_LINK_FLAGS ...)
+set(KM_COMPILE_FLAGS ...)
+set(KM_COMPILE_DEFINITIONS "WINNT=1;_AMD64_;AMD64")
+set(KM_LINK_FLAGS ...)
 
-# ---- WDK Libraries ----
-file(GLOB WDK_LIB_FILES ".../*.lib")
-foreach(LIB_FILE ${WDK_LIB_FILES})
+# ---- KM Libraries ----
+file(GLOB KM_LIB_FILES ".../*.lib")
+foreach(LIB_FILE ${KM_LIB_FILES})
     get_filename_component(LIB_NAME ${LIB_FILE} NAME_WE)
     string(TOUPPER ${LIB_NAME} LIB_NAME)
     add_library(WDK::${LIB_NAME} INTERFACE IMPORTED)
     set_property(TARGET WDK::${LIB_NAME} PROPERTY INTERFACE_LINK_LIBRARIES ${LIB_FILE})
 endforeach()
 
-# ---- WDK Functions ----
-function(wdk_add_driver ...)
-function(wdk_add_library ...)
-function(wdk_add_executable ...)
-function(um_library ...)
+# ---- KM/UM Functions ----
+function(km_sys ...)
+function(km_lib ...)
+function(um_exe ...)
+function(um_lib ...)
 function(um_dll ...)
 ```
 
@@ -177,10 +177,10 @@ function(um_dll ...)
 
 | 函数 | 用途 | 输出 |
 |------|------|------|
-| `wdk_add_driver(target [KMDF ver] srcs...)` | 内核驱动 | `.sys` |
-| `wdk_add_library(target [KMDF ver] srcs...)` | 内核库 | `.lib` |
-| `wdk_add_executable(target [SUBSYSTEM CONSOLE\|WIN] srcs...)` | 用户态 EXE | `.exe` |
-| `um_library(target srcs...)` | 用户态静态库 | `.lib` |
+| `km_sys(target [KMDF ver] srcs...)` | 内核驱动 | `.sys` |
+| `km_lib(target [KMDF ver] srcs...)` | 内核库 | `.lib` |
+| `um_exe(target [SUBSYSTEM CONSOLE\|WIN] srcs...)` | 用户态 EXE | `.exe` |
+| `um_lib(target srcs...)` | 用户态静态库 | `.lib` |
 | `um_dll(target srcs...)` | 用户态 DLL | `.dll` |
 
 ## ewdk.cmake 中设置的变量
@@ -205,11 +205,11 @@ function(um_dll ...)
 | `CMAKE_INCLUDE_PATH` | 头文件搜索路径 (CACHE FORCE) |
 | `CMAKE_LIBRARY_PATH` | 库文件搜索路径 (CACHE FORCE) |
 | `CMAKE_PROGRAM_PATH` | 程序搜索路径 (含 ninja/cl/rc) |
-| `WDK_SIGNTOOL_PATH` | signtool.exe 路径（Go 动态查找） |
-| `WDK_COMPILE_FLAGS` | KM 编译选项 (/Zp8 /GF /GR- /Gz /kernel ...) |
-| `WDK_COMPILE_DEFINITIONS` | KM 编译定义 (WINNT=1;_AMD64_;AMD64) |
-| `WDK_COMPILE_DEFINITIONS_DEBUG` | Debug 编译定义 (DBG=1;MSC_NOOPT;...) |
-| `WDK_LINK_FLAGS` | KM 链接选项 (/DRIVER /SUBSYSTEM:NATIVE /NODEFAULTLIB ...) |
+| `KM_SIGNTOOL_PATH` | signtool.exe 路径（Go 动态查找） |
+| `KM_COMPILE_FLAGS` | KM 编译选项 (/Zp8 /GF /GR- /Gz /kernel ...) |
+| `KM_COMPILE_DEFINITIONS` | KM 编译定义 (WINNT=1;_AMD64_;AMD64) |
+| `KM_COMPILE_DEFINITIONS_DEBUG` | Debug 编译定义 (DBG=1;MSC_NOOPT;...) |
+| `KM_LINK_FLAGS` | KM 链接选项 (/DRIVER /SUBSYSTEM:NATIVE /NODEFAULTLIB ...) |
 
 ## CI 流程 (.github/workflows/ci.yml)
 
@@ -239,8 +239,8 @@ go build -o ewdk.exe .
 1. **不再写入注册表**：所有环境变量通过 `ewdk.cmake` 传递给 CMake，无需修改系统环境变量
 2. **`ewdk.cmake` 是自动生成的**：每次挂载 ISO 后由 Go 重新生成，不应手动编辑或提交到版本控制
 3. **`amd64` 已内置于 `runSetupBuildEnv`**：无需调用者手动拼接参数
-4. **单文件设计**：Go 生成完整的 `ewdk.cmake`，包含环境变量、编译参数、库注册、构建函数，外部只需 `include(ewdk.cmake)`
-5. **CMakeLists.txt 极简**：仅需 `include(ewdk.cmake)` 一行
+4. **单文件设计**：Go 生成完整的 `ewdk.cmake`，包含环境变量、编译参数、库注册、构建函数，外部只需 `include(d:/ewdk/ewdk.cmake)`
+5. **CMakeLists.txt 极简**：仅需 `include(d:/ewdk/ewdk.cmake)` 一行
 6. **Go 负责所有查找**：signtool.exe、ntddk.h、.lib 文件均由 Go 在生成时定位，CMake 侧无需 file(GLOB) 检测或 fallback 逻辑
 7. **KM/UM 完全分离**：`WDK_KM_INCLUDE_DIRS` / `WDK_UM_INCLUDE_DIRS` 独立设置，函数按需引用
-8. **其他项目使用**：只需将生成的 `ewdk.cmake` 复制到目标项目，在 CMakeLists.txt 中 `include(ewdk.cmake)` 即可
+8. **其他项目使用**：只需将生成的 `ewdk.cmake` 复制到目标项目，在 CMakeLists.txt 中 `include(d:/ewdk/ewdk.cmake)` 即可
