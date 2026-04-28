@@ -3,24 +3,24 @@
 
 # ---- WDK Core ----
 set(WDK_FOUND TRUE)
-set(WDK_ROOT "F:/Program Files/Windows Kits/10")
+set(WDK_ROOT "E:/Program Files/Windows Kits/10")
 set(WDK_VERSION "10.0.28000.0")
 set(WDK_INC_VERSION "10.0.28000.0")
 set(WDK_LIB_VERSION "10.0.28000.0")
 set(WDK_PLATFORM "x64")
 
 # ---- KM (Kernel-Mode) ----
-set(WDK_KM_INCLUDE_DIRS "F:/Program Files/Windows Kits/10/Include/10.0.28000.0/shared;F:/Program Files/Windows Kits/10/Include/10.0.28000.0/km;F:/Program Files/Windows Kits/10/Include/10.0.28000.0/km/crt;F:/Program Files/Windows Kits/10/Include/wdf/kmdf/1.35")
-set(WDK_KM_LIB_DIRS "F:/Program Files/Windows Kits/10/Lib/10.0.28000.0/km/x64")
+set(WDK_KM_INCLUDE_DIRS "E:/Program Files/Windows Kits/10/Include/10.0.28000.0/shared;E:/Program Files/Windows Kits/10/Include/10.0.28000.0/km;E:/Program Files/Windows Kits/10/Include/10.0.28000.0/km/crt;E:/Program Files/Windows Kits/10/Include/wdf/kmdf/1.35")
+set(WDK_KM_LIB_DIRS "E:/Program Files/Windows Kits/10/Lib/10.0.28000.0/km/x64")
 
 # ---- UM (User-Mode) ----
-set(WDK_UM_INCLUDE_DIRS "F:/Program Files/Windows Kits/10/Include/10.0.28000.0/shared;F:/Program Files/Windows Kits/10/Include/10.0.28000.0/um;F:/Program Files/Windows Kits/10/Include/10.0.28000.0/ucrt;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/ATLMFC/include;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Auxiliary/VS/include;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/DIA SDK/include")
-set(WDK_UM_LIB_DIRS "F:/Program Files/Windows Kits/10/Lib/10.0.28000.0/um/x64;F:/Program Files/Windows Kits/10/Lib/10.0.28000.0/ucrt/x64;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/ATLMFC/lib/x64;F:/Program Files/Microsoft Visual Studio/2022/BuildTools/DIA SDK/lib")
+set(WDK_UM_INCLUDE_DIRS "E:/Program Files/Windows Kits/10/Include/10.0.28000.0/shared;E:/Program Files/Windows Kits/10/Include/10.0.28000.0/um;E:/Program Files/Windows Kits/10/Include/10.0.28000.0/ucrt;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/ATLMFC/include;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Auxiliary/VS/include;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/DIA SDK/include")
+set(WDK_UM_LIB_DIRS "E:/Program Files/Windows Kits/10/Lib/10.0.28000.0/um/x64;E:/Program Files/Windows Kits/10/Lib/10.0.28000.0/ucrt/x64;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/ATLMFC/lib/x64;E:/Program Files/Microsoft Visual Studio/2022/BuildTools/DIA SDK/lib")
 
 # ---- Compiler ----
-set(CMAKE_C_COMPILER "F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe" CACHE FILEPATH "" FORCE)
-set(CMAKE_CXX_COMPILER "F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe" CACHE FILEPATH "" FORCE)
-set(CMAKE_RC_COMPILER "F:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/rc.exe" CACHE FILEPATH "" FORCE)
+set(CMAKE_C_COMPILER "E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe" CACHE FILEPATH "" FORCE)
+set(CMAKE_CXX_COMPILER "E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe" CACHE FILEPATH "" FORCE)
+set(CMAKE_RC_COMPILER "E:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/rc.exe" CACHE FILEPATH "" FORCE)
 set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
 set(CMAKE_CXX_COMPILER_WORKS 1 CACHE INTERNAL "")
 set(CMAKE_C_STANDARD_LIBRARIES "")
@@ -28,9 +28,9 @@ set(CMAKE_CXX_STANDARD_LIBRARIES "")
 set(CMAKE_INCLUDE_PATH "${WDK_KM_INCLUDE_DIRS};${WDK_UM_INCLUDE_DIRS}" CACHE STRING "" FORCE)
 set(CMAKE_LIBRARY_PATH "${WDK_KM_LIB_DIRS};${WDK_UM_LIB_DIRS}" CACHE STRING "" FORCE)
 list(APPEND CMAKE_PROGRAM_PATH "D:/ewdk")
-list(APPEND CMAKE_PROGRAM_PATH "F:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64")
-list(APPEND CMAKE_PROGRAM_PATH "F:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64")
-set(CMAKE_MT "F:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/mt.exe" CACHE FILEPATH "" FORCE)
+list(APPEND CMAKE_PROGRAM_PATH "E:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64")
+list(APPEND CMAKE_PROGRAM_PATH "E:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64")
+set(CMAKE_MT "E:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/mt.exe" CACHE FILEPATH "" FORCE)
 
 set(ENV{WDKContentRoot} "${WDK_ROOT}")
 set(ENV{INCLUDE} "${WDK_KM_INCLUDE_DIRS};${WDK_UM_INCLUDE_DIRS}")
@@ -74,7 +74,7 @@ string(CONCAT KM_LINK_FLAGS
     )
 
 # ---- KM Libraries ----
-file(GLOB KM_LIB_FILES "F:/Program Files/Windows Kits/10/Lib/10.0.28000.0/km/x64/*.lib")
+file(GLOB KM_LIB_FILES "E:/Program Files/Windows Kits/10/Lib/10.0.28000.0/km/x64/*.lib")
 foreach(LIB_FILE ${KM_LIB_FILES})
     get_filename_component(LIB_NAME ${LIB_FILE} NAME_WE)
     string(TOUPPER ${LIB_NAME} LIB_NAME)
@@ -82,7 +82,7 @@ foreach(LIB_FILE ${KM_LIB_FILES})
     set_property(TARGET WDK::${LIB_NAME} PROPERTY INTERFACE_LINK_LIBRARIES ${LIB_FILE})
 endforeach()
 
-set(KM_SIGNTOOL_PATH "F:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/signtool.exe")
+set(KM_SIGNTOOL_PATH "E:/Program Files/Windows Kits/10/bin/10.0.28000.0/x64/signtool.exe")
 
 
 # ---- KM/UM Functions ----
