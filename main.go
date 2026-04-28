@@ -89,16 +89,30 @@ func main() {
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
 
-	cmakePath := `d:\ewdk\` + ewdkCmakeGenerated
+	ewdkDir := `d:\ewdk`
+	if !stream.FileExists(ewdkDir) {
+		mylog.Check(os.MkdirAll(ewdkDir, 0755))
+		mylog.Success("Created directory: ", ewdkDir)
+	} else {
+		mylog.Success("Directory exists: ", ewdkDir)
+	}
+
+	cmakePath := ewdkDir + `\` + ewdkCmakeGenerated
 	mylog.Check(generateEwdkCmake(env, cmakePath))
 	mylog.Success("Generated: ", cmakePath)
 
 	ensureTestCertificate()
 
-	envJSONPath := `d:\ewdk\ewdk.env.json`
+	envJSONPath := ewdkDir + `\ewdk.env.json`
 	envData := mylog.Check2(json.MarshalIndent(env, "", "  "))
 	mylog.Check(os.WriteFile(envJSONPath, envData, 0644))
 	mylog.Success("Generated: ", envJSONPath)
+
+	if stream.FileExists(cmakePath) {
+		mylog.Success("SUCCESS: ewdk.cmake exists at: ", cmakePath)
+	} else {
+		fmt.Printf("  [ERROR] FAILED: ewdk.cmake not found at: %s\n", cmakePath)
+	}
 
 	mylog.Success("Environment ready. Run build.bat to start building.")
 }
