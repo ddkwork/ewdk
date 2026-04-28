@@ -101,7 +101,7 @@ jobs:
           Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip" -Force
           Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip"
 
-      - name: Delete existing release
+      - name: Delete existing release and tag
         uses: actions/github-script@v7
         with:
           script: |
@@ -109,7 +109,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             });
-            
+
             const existingRelease = releases.data.find(r => r.tag_name === 'ci-release');
             if (existingRelease) {
               await github.rest.repos.deleteRelease({
@@ -118,6 +118,17 @@ jobs:
                 release_id: existingRelease.id
               });
               console.log('Deleted existing release');
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'tags/ci-release'
+              });
+              console.log('Deleted existing tag');
+            } catch (e) {
+              console.log('Tag not found or already deleted');
             }
 
       - name: Release
