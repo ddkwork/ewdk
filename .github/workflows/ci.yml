@@ -57,7 +57,7 @@ jobs:
           $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
           Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
 
-      - name: Mount ISO and generate ewdk-env.cmake
+      - name: Mount ISO and generate ewdk.cmake
         run: |
           go run .
 
