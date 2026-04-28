@@ -101,6 +101,25 @@ jobs:
           Compress-Archive -Path "*" -DestinationPath "${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip" -Force
           Write-Host "Archive created: ${{ env.RELEASE_ZIP_FILE_NAME }}-ci-release.zip"
 
+      - name: Delete existing release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const existingRelease = releases.data.find(r => r.tag_name === 'ci-release');
+            if (existingRelease) {
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: existingRelease.id
+              });
+              console.log('Deleted existing release');
+            }
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
@@ -115,4 +134,3 @@ jobs:
             Branch: ${{ github.ref_name }}
           draft: false
           prerelease: true
-          replace_existing: true
