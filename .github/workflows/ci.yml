@@ -78,9 +78,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Delete existing remote tag
-        run: |
-          git push --delete origin ci-release 2>$null || true
+      - name: Delete existing release
+        uses: dev-drprasad/delete-older-releases@v0.3.4
+        with:
+          keep_latest: 0
+          delete_tag_pattern: ci-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create local tag
         run: |
