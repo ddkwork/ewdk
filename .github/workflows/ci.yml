@@ -62,9 +62,7 @@ jobs:
           go run .
 
       - name: Build Release and Debug
-        run: |
-          set "PATH=C:\Program Files\CMake\bin;%PATH%"
-          build.bat
+        run: build.bat
         shell: cmd
 
   release:
