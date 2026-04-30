@@ -93,18 +93,15 @@ func main() {
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
 
-	cmakePath := filepath.Join("C:\\Windows", ewdkCmakeGenerated)
-	//cmakePath := filepath.Join(info.Module, ewdkCmakeGenerated)
+	cmakePath := filepath.Join(info.Bin, ewdkCmakeGenerated)
 	mylog.Check(generateEwdkCmake(env, cmakePath))
 	mylog.Success("Generated: ", cmakePath)
 
-	stream.CopyFile("ninja.exe", filepath.Join("C:\\Windows", "ninja.exe"))
-	//stream.CopyFile("ninja.exe", filepath.Join(info.Bin, "ninja.exe"))
+	stream.CopyFile("ninja.exe", filepath.Join(info.Bin, "ninja.exe"))
 
 	ensureTestCertificate()
 
-	envJSONPath := filepath.Join("C:\\Windows", "ewdk.env.json")
-	//envJSONPath := filepath.Join(info.Module, "ewdk.env.json")
+	envJSONPath := filepath.Join(info.Bin, "ewdk.env.json")
 
 	envData := mylog.Check2(json.MarshalIndent(env, "", "  "))
 	mylog.Check(os.WriteFile(envJSONPath, envData, 0644))

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
+list(APPEND CMAKE_PREFIX_PATH "C:/Program Files/CMake/bin")
 include(ewdk.cmake)
 
 project(AllDemos)
