@@ -27,12 +27,12 @@ func InstallInfo() Info {
 	cmakeExePath := strings.TrimSpace(string(out))
 
 	for s := range strings.Lines(cmakeExePath) {
-		println(s)
+		mylog.Warning("cmake exe path:", s)
 
 		dir := filepath.Dir(cmakeExePath) // xxx/bin
 		cmakeRoot := filepath.Dir(dir)    // xxx/CMake
 
-		mylog.Success(cmakeRoot)
+		mylog.Warning("cmake root:", cmakeRoot)
 		filepath.WalkDir(cmakeRoot, func(path string, d fs.DirEntry, err error) error {
 			mylog.Info(path)
 			return nil
