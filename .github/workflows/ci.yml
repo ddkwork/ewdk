@@ -89,7 +89,7 @@ jobs:
 
       - name: Push tag
         run: |
-          git push origin ci-release
+          git push origin ci-release --force
 
       - name: Get commit info
         id: commit_info
