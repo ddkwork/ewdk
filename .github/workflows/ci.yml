@@ -63,7 +63,7 @@ jobs:
 
       - name: Build Release and Debug
         env:
-          C: "C:\Program Files\CMake\bin\cmake.exe"
+          C: 'C:\Program Files\CMake\bin\cmake.exe'
         run: |
           "%C%" -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release . && "%C%" --build build --config Release
           "%C%" -B build_debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug . && "%C%" --build build_debug --config Debug
