@@ -370,7 +370,11 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString("\n# ---- WDK Settings ----\n")
 	b.WriteString("set(WDK_WINVER \"0x0601\" CACHE STRING \"Default WINVER for WDK targets\")\n")
 	b.WriteString("set(WDK_NTDDI_VERSION \"\" CACHE STRING \"Specified NTDDI_VERSION for WDK targets if needed\")\n")
-	b.WriteString("set(KM_TEST_SIGN ON CACHE BOOL \"Enable test signing for drivers\")\n")
+	b.WriteString("if(DEFINED ENV{GITHUB_ACTIONS})\n")
+	b.WriteString("    set(KM_TEST_SIGN OFF CACHE BOOL \"Enable test signing for drivers (disabled in CI)\")\n")
+	b.WriteString("else()\n")
+	b.WriteString("    set(KM_TEST_SIGN ON CACHE BOOL \"Enable test signing for drivers\")\n")
+	b.WriteString("endif()\n")
 	b.WriteString("set(KM_TEST_SIGN_NAME \"WDKTestCert\" CACHE STRING \"Certificate name for test signing\")\n")
 
 	b.WriteString(`
