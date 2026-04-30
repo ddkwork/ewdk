@@ -59,6 +59,9 @@ type ewdkEnv struct {
 }
 
 func main() {
+
+	info := cmake.InstallInfo()
+
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "unmount":
@@ -88,8 +91,6 @@ func main() {
 	mylog.Success("SetupCmd: ", setupEnvCmd)
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
-
-	info := cmake.InstallInfo()
 
 	cmakePath := filepath.Join(info.Module, ewdkCmakeGenerated)
 	mylog.Check(generateEwdkCmake(env, cmakePath))

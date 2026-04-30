@@ -38,24 +38,24 @@ jobs:
           Write-Host "aria2 installed: $env:TEMP\aria2c.exe"
           & "$env:TEMP\aria2c.exe" --version
 
-      - name: Cache EWDK ISO
-        id: cache-iso
-        uses: actions/cache@v5
-        with:
-          path: C:\Users\runneradmin\AppData\Local\Temp\ewdk.iso
-          key: ewdk-iso-${{ hashFiles('scripts/get_ewdk_url.go') }}
-          restore-keys: |
-            ewdk-iso-
-
-      - name: Download EWDK ISO
-        if: steps.cache-iso.outputs.cache-hit != 'true'
-        run: |
-          go run scripts/get_ewdk_url.go
-          $ewdkUrl = Get-Content "$env:GITHUB_ENV" | Select-String "EWDK_ISO_URL=" | ForEach-Object { $_.ToString().Replace("EWDK_ISO_URL=", "").Trim() }
-          Write-Host "Downloading EWDK ISO from: $ewdkUrl"
-          & "$env:TEMP\aria2c.exe" -x16 -s16 --file-allocation=none -d "$env:TEMP" -o ewdk.iso $ewdkUrl
-          $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
-          Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
+#      - name: Cache EWDK ISO
+#        id: cache-iso
+#        uses: actions/cache@v5
+#        with:
+#          path: C:\Users\runneradmin\AppData\Local\Temp\ewdk.iso
+#          key: ewdk-iso-${{ hashFiles('scripts/get_ewdk_url.go') }}
+#          restore-keys: |
+#            ewdk-iso-
+#
+#      - name: Download EWDK ISO
+#        if: steps.cache-iso.outputs.cache-hit != 'true'
+#        run: |
+#          go run scripts/get_ewdk_url.go
+#          $ewdkUrl = Get-Content "$env:GITHUB_ENV" | Select-String "EWDK_ISO_URL=" | ForEach-Object { $_.ToString().Replace("EWDK_ISO_URL=", "").Trim() }
+#          Write-Host "Downloading EWDK ISO from: $ewdkUrl"
+#          & "$env:TEMP\aria2c.exe" -x16 -s16 --file-allocation=none -d "$env:TEMP" -o ewdk.iso $ewdkUrl
+#          $fileSize = (Get-Item "$env:TEMP\ewdk.iso").Length
+#          Write-Host "ISO downloaded: $([math]::Round($fileSize/1MB, 2)) MB"
 
       - name: Mount ISO and generate ewdk.cmake
         run: |
