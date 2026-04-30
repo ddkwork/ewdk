@@ -93,7 +93,7 @@ func main() {
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
 
-	cmakePath := filepath.Join(info.Bin, ewdkCmakeGenerated)
+	cmakePath := filepath.Join(info.Module, ewdkCmakeGenerated)
 	mylog.Check(generateEwdkCmake(env, cmakePath))
 	mylog.Success("Generated: ", cmakePath)
 
@@ -101,7 +101,7 @@ func main() {
 
 	ensureTestCertificate()
 
-	envJSONPath := filepath.Join(info.Bin, "ewdk.env.json")
+	envJSONPath := filepath.Join(info.Module, "ewdk.env.json")
 
 	envData := mylog.Check2(json.MarshalIndent(env, "", "  "))
 	mylog.Check(os.WriteFile(envJSONPath, envData, 0644))
