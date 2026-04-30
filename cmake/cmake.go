@@ -28,6 +28,15 @@ func InstallInfo() Info {
 
 	for s := range strings.Lines(cmakeExePath) {
 		println(s)
+
+		dir := filepath.Dir(cmakeExePath) // xxx/bin
+		cmakeRoot := filepath.Dir(dir)    // xxx/CMake
+
+		mylog.Success(cmakeRoot)
+		filepath.WalkDir(cmakeRoot, func(path string, d fs.DirEntry, err error) error {
+			mylog.Info(path)
+			return nil
+		})
 	}
 
 	panic(111)
