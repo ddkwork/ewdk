@@ -1,7 +1,6 @@
 package cmake
 
 import (
-	"io/fs"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -28,33 +27,13 @@ func InstallInfo() Info {
 
 	for s := range strings.Lines(cmakeExePath) {
 		if strings.Contains(s, "Program") {
-			continue
+			cmakeExePath = s
+			break
 		}
-		mylog.Warning("cmake exe path:", s)
-
-		dir := filepath.Dir(s)         // xxx/bin
-		cmakeRoot := filepath.Dir(dir) // xxx/CMake
-
-		mylog.Warning("cmake root:", cmakeRoot)
-		filepath.WalkDir(cmakeRoot, func(path string, d fs.DirEntry, err error) error {
-			mylog.Info(path)
-			return nil
-		})
 	}
-
-	panic(111)
-	mylog.Struct(cmakeExePath)
-
 	// 3. 截取CMake安装根目录
 	dir := filepath.Dir(cmakeExePath) // xxx/bin
 	cmakeRoot := filepath.Dir(dir)    // xxx/CMake
-
-	mylog.Success(cmakeRoot)
-
-	filepath.WalkDir(cmakeRoot, func(path string, d fs.DirEntry, err error) error {
-		mylog.Info(path)
-		return nil
-	})
 
 	// 4. Windows原生全局cmake搜索路径
 	// C:\Program Files\CMake\share\cmake-*\Modules
