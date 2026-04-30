@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-include(d:/ewdk/ewdk.cmake)
+include(ewdk.cmake)
 
 project(AllDemos)
 set(CMAKE_CXX_STANDARD 14)

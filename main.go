@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ddkwork/golibrary/cmake"
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/stream"
 )
@@ -39,7 +40,6 @@ type ewdkCommonEnv struct {
 	MT                           string
 	SignTool                     string
 	NTDDKFile                    string
-	NinjaDir                     string
 }
 
 type ewdkKMEnv struct {
@@ -91,13 +91,18 @@ func main() {
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
 
-	cmakePath := `d:\ewdk\` + ewdkCmakeGenerated
+	info := cmake.InstallInfo()
+
+	cmakePath := filepath.Join(info.Module, ewdkCmakeGenerated)
 	mylog.Check(generateEwdkCmake(env, cmakePath))
 	mylog.Success("Generated: ", cmakePath)
 
+	stream.CopyFile("ninja.exe", filepath.Join(info.Bin, "ninja.exe"))
+
 	ensureTestCertificate()
 
-	envJSONPath := `d:\ewdk\ewdk.env.json`
+	envJSONPath := filepath.Join(info.Module, "ewdk.env.json")
+
 	envData := mylog.Check2(json.MarshalIndent(env, "", "  "))
 	mylog.Check(os.WriteFile(envJSONPath, envData, 0644))
 	mylog.Success("Generated: ", envJSONPath)
@@ -252,7 +257,6 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	mt := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "mt.exe")
 	signtool := filepath.Join(result[EnvWDKContentRoot], "bin", result[EnvWindowsTargetPlatformVersion], "x64", "signtool.exe")
 	ntddkFile := filepath.Join(result[EnvWDKContentRoot], "Include", result[EnvWindowsTargetPlatformVersion], "km", "ntddk.h")
-	ninjaDir, _ := filepath.Abs(filepath.Dir("ninja.exe"))
 
 	common := ewdkCommonEnv{
 		WDKContentRoot:               result[EnvWDKContentRoot],
@@ -264,7 +268,6 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 		BuildLabSetupRoot:            result[EnvBuildLabSetupRoot],
 		CC:                           cc,
 		RC:                           rc,
-		NinjaDir:                     ninjaDir,
 	}
 	if _, err := os.Stat(mt); err == nil {
 		common.MT = mt
@@ -354,7 +357,6 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString("set(CMAKE_CXX_STANDARD_LIBRARIES \"\")\n")
 	b.WriteString("set(CMAKE_INCLUDE_PATH \"${WDK_KM_INCLUDE_DIRS};${WDK_UM_INCLUDE_DIRS}\" CACHE STRING \"\" FORCE)\n")
 	b.WriteString("set(CMAKE_LIBRARY_PATH \"${WDK_KM_LIB_DIRS};${WDK_UM_LIB_DIRS}\" CACHE STRING \"\" FORCE)\n")
-	b.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(c.NinjaDir)))
 	b.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.CC))))
 	if _, err := os.Stat(c.RC); err == nil {
 		b.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.RC))))
