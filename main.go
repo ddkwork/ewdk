@@ -61,6 +61,8 @@ type ewdkEnv struct {
 func main() {
 
 	info := cmake.InstallInfo()
+	mylog.Struct(info)
+	panic(111)
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
