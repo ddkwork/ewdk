@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	ewdkCmakeGenerated              = "ewdk.cmake"
 	EnvWindowsTargetPlatformVersion = "WindowsTargetPlatformVersion"
 	EnvVCToolsInstallDir            = "VCToolsInstallDir"
 	EnvWDKContentRoot               = "WDKContentRoot"
@@ -60,8 +59,8 @@ type ewdkEnv struct {
 
 func main() {
 
-	info := cmake.InstallInfo()
-	mylog.Struct(info)
+	info := cmake.Module()
+	mylog.Success(info)
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -93,19 +92,16 @@ func main() {
 	env := mylog.Check2(runSetupBuildEnv(setupEnvCmd))
 	mylog.Struct(env)
 
-	cmakePath := filepath.Join(info.Bin, ewdkCmakeGenerated)
-	mylog.Check(generateEwdkCmake(env, cmakePath))
-	mylog.Success("Generated: ", cmakePath)
+	mylog.Check(generateEwdkCmake(env, cmake.EwdkCmakeFile))
+	mylog.Success("Generated: ", cmake.EwdkCmakeFile)
 
-	stream.CopyFile("ninja.exe", filepath.Join(info.Bin, "ninja.exe"))
+	stream.CopyFile("ninja.exe", filepath.Join(cmake.BinDir, "ninja.exe"))
 
 	ensureTestCertificate()
 
-	envJSONPath := filepath.Join(info.Bin, "ewdk.env.json")
-
 	envData := mylog.Check2(json.MarshalIndent(env, "", "  "))
-	mylog.Check(os.WriteFile(envJSONPath, envData, 0644))
-	mylog.Success("Generated: ", envJSONPath)
+	mylog.Check(os.WriteFile(cmake.EwdkEnvFile, envData, 0644))
+	mylog.Success("Generated: ", cmake.EwdkEnvFile)
 
 	mylog.Success("Environment ready. Run build.bat to start building.")
 }
@@ -149,7 +145,7 @@ func resolveISOPath() string {
 }
 
 func cleanGenerated() {
-	files := []string{ewdkCmakeGenerated}
+	files := []string{cmake.EwdkCmakeFile}
 	for _, f := range files {
 		if stream.FileExists(f) {
 			mylog.Check(os.Remove(f))
