@@ -27,6 +27,9 @@ func InstallInfo() Info {
 	cmakeExePath := strings.TrimSpace(string(out))
 
 	for s := range strings.Lines(cmakeExePath) {
+		if strings.Contains(s, "Program") {
+			continue
+		}
 		mylog.Warning("cmake exe path:", s)
 
 		dir := filepath.Dir(s)         // xxx/bin
