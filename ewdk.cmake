@@ -39,7 +39,11 @@ set(ENV{LIB} "${WDK_KM_LIB_DIRS};${WDK_UM_LIB_DIRS}")
 # ---- WDK Settings ----
 set(WDK_WINVER "0x0601" CACHE STRING "Default WINVER for WDK targets")
 set(WDK_NTDDI_VERSION "" CACHE STRING "Specified NTDDI_VERSION for WDK targets if needed")
-set(KM_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
+if(DEFINED ENV{GITHUB_ACTIONS})
+    set(KM_TEST_SIGN OFF CACHE BOOL "Enable test signing for drivers (disabled in CI)")
+else()
+    set(KM_TEST_SIGN ON CACHE BOOL "Enable test signing for drivers")
+endif()
 set(KM_TEST_SIGN_NAME "WDKTestCert" CACHE STRING "Certificate name for test signing")
 
 set(KM_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
@@ -166,6 +170,7 @@ function(um_exe _target)
     string(TOUPPER "${WDK_SUBSYSTEM}" _subsystem_upper)
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
+    set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -191,6 +196,7 @@ function(um_lib _target)
     add_library(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
+    set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -210,6 +216,7 @@ function(um_dll _target)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL"
         )
+    set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
