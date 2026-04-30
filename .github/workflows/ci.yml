@@ -62,11 +62,7 @@ jobs:
           go run .
 
       - name: Build Release and Debug
-        run: |
-          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DKM_TEST_SIGN=OFF .
-          cmake --build build --config Release
-          cmake -B build_debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DKM_TEST_SIGN=OFF .
-          cmake --build build_debug --config Debug
+        run: build.bat
 
   release:
     needs: build
