@@ -63,6 +63,7 @@ jobs:
 
       - name: Build Release and Debug
         run: build.bat
+        shell: cmd
 
   release:
     needs: build
