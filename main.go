@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"ewdk/cmake"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/ddkwork/golibrary/cmake"
 	"github.com/ddkwork/golibrary/std/mylog"
 	"github.com/ddkwork/golibrary/std/stream"
 )
@@ -59,8 +59,6 @@ type ewdkEnv struct {
 }
 
 func main() {
-	os.MkdirAll(`d:\ewdk`, 0755)
-
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "unmount":
