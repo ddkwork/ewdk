@@ -25,6 +25,12 @@ func InstallInfo() Info {
 	cmd = exec.Command("where", "cmake")
 	out := mylog.Check2(cmd.CombinedOutput())
 	cmakeExePath := strings.TrimSpace(string(out))
+
+	for s := range strings.Lines(cmakeExePath) {
+		println(s)
+	}
+
+	panic(111)
 	mylog.Struct(cmakeExePath)
 
 	// 3. 截取CMake安装根目录
