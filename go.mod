@@ -1,6 +1,6 @@
 module ewdk
 
-go 1.26.1
+go 1.26.2
 
 require github.com/ddkwork/golibrary v0.2.2
 
