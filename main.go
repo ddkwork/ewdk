@@ -106,7 +106,7 @@ func main() {
 	mylog.Success("Environment ready. Run build.bat to start building.")
 }
 
-const isoPath = `D:\ewdk\EWDK_br_release_28000_251103-1709.iso`
+const isoPath = `D:\ux\examples\ewdk\EWDK_br_release_28000_251103-1709.iso`
 
 const testSignCertName = "WDKTestCert"
 
