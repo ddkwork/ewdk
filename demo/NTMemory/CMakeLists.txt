@@ -16,6 +16,6 @@ um_exe(NTMemory SUBSYSTEM WINDOWS
 )
 
 target_include_directories(NTMemory PRIVATE ${IMGUI_DIR})
-target_compile_definitions(NTMemory PRIVATE _CRT_SECURE_NO_WARNINGS)
+target_compile_definitions(NTMemory PRIVATE _CRT_SECURE_NO_WARNINGS UNICODE _UNICODE)
 target_link_libraries(NTMemory d3d11.lib dxgi.lib ntdll.lib psapi.lib advapi32.lib)
 set_target_properties(NTMemory PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\"")
