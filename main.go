@@ -47,8 +47,15 @@ type ewdkKMEnv struct {
 }
 
 type ewdkUMEnv struct {
-	IncludeDirs []string
-	LibDirs     []string
+	IncludeDirs        []string
+	LibDirs            []string
+	QtIncludeDirs      []string
+	QtPluginDirs       []string
+	QtVersion          string
+	QtCompileDefs      []string
+	QtCompileOptions   []string
+	QtLinkLibs         []string
+	MsvcRuntimeLibrary string
 }
 
 type ewdkEnv struct {
@@ -202,6 +209,121 @@ func getEwdkDriveLetter() string {
 	return ""
 }
 
+type qtStaticInfo struct {
+	IncludeDirs      []string
+	PluginDirs       []string
+	Version          string
+	CompileDefs      []string
+	CompileOptions   []string
+	LinkLibs         []string
+	MsvcRuntimeLibrary string
+}
+
+func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
+	var info qtStaticInfo
+	info.MsvcRuntimeLibrary = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+	includeDir := filepath.Join(qtBaseDir, "include")
+	if entries, err := os.ReadDir(includeDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() && strings.HasPrefix(e.Name(), "Qt") {
+				info.IncludeDirs = append(info.IncludeDirs, filepath.Join(includeDir, e.Name()))
+			}
+		}
+	}
+	pluginDir := filepath.Join(qtBaseDir, "plugins")
+	if entries, err := os.ReadDir(pluginDir); err == nil {
+		for _, cat := range entries {
+			if cat.IsDir() {
+				catPath := filepath.Join(pluginDir, cat.Name())
+				if subEntries, err := os.ReadDir(catPath); err == nil {
+					for _, p := range subEntries {
+						name := p.Name()
+						if strings.HasSuffix(strings.ToLower(name), ".lib") || p.IsDir() {
+							info.PluginDirs = append(info.PluginDirs, catPath)
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+	qtCoreDir := filepath.Join(includeDir, "QtCore")
+	if entries, err := os.ReadDir(qtCoreDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				parts := strings.Split(e.Name(), ".")
+				if len(parts) >= 3 {
+					info.Version = fmt.Sprintf("%s.%s.%s", parts[0], parts[1], parts[2])
+					break
+				}
+			}
+		}
+	}
+	libDir := filepath.Join(qtBaseDir, "lib")
+	info.CompileDefs = []string{
+		"QT_BUILDING_QT",
+		"MIQT_BUILDING_DLL",
+		"MIQT_WINDOWSQTSTATIC",
+		"QT_STATIC",
+		"QT_NO_CAST_FROM_ASCII",
+		"QT_NO_CAST_TO_ASCII",
+		"QT_NO_EXCEPTIONS",
+		"QT_NO_DEBUG",
+		fmt.Sprintf("QT_VERSION_MAJOR=%s", strings.Split(info.Version, ".")[0]),
+		fmt.Sprintf("QT_VERSION_MINOR=%s", strings.Split(info.Version, ".")[1]),
+		fmt.Sprintf("QT_VERSION_PATCH=%s", strings.Split(info.Version, ".")[2]),
+		"Q_CORE_EXPORT=",
+		"Q_GUI_EXPORT=",
+		"Q_WIDGETS_EXPORT=",
+		"_WIN32_WINNT=0x0602",
+	}
+	info.CompileOptions = []string{
+		"/Zc:__cplusplus",
+		"/bigobj",
+		"/MP",
+		"/EHsc",
+		"/permissive-",
+		"/utf-8",
+	}
+	qtLibs := []string{
+		"Qt6Core", "Qt6Gui", "Qt6Widgets", "Qt6Network",
+		"Qt6OpenGL", "Qt6OpenGLWidgets",
+		"Qt6BundledHarfbuzz", "Qt6BundledFreetype",
+		"Qt6BundledLibpng", "Qt6BundledLibjpeg",
+		"Qt6BundledPcre2", "Qt6BundledZLIB",
+		"Qt6Concurrent", "Qt6FbSupport",
+		"Qt6DeviceDiscoverySupport", "Qt6EntryPoint", "Qt6Xml",
+	}
+	for _, lib := range qtLibs {
+		libPath := filepath.Join(libDir, lib+".lib")
+		if _, err := os.Stat(libPath); err == nil {
+			info.LinkLibs = append(info.LinkLibs, libPath)
+		}
+	}
+	pluginLibs := []struct{ cat, name string }{
+		{"platforms", "qwindows"},
+		{"styles", "qmodernwindowsstyle"},
+	}
+	for _, plib := range pluginLibs {
+		libPath := filepath.Join(pluginDir, plib.cat, plib.name+".lib")
+		if _, err := os.Stat(libPath); err == nil {
+			info.LinkLibs = append(info.LinkLibs, libPath)
+		}
+	}
+	winLibs := []string{
+		"icu", "icuin", "icuuc",
+		"advapi32", "shell32", "ole32", "oleaut32", "uuid",
+		"user32", "gdi32", "comdlg32", "winspool", "imm32", "version", "ws2_32",
+		"dwmapi", "d3d9", "dwrite", "dxgi", "netapi32", "opengl32",
+		"uiautomationcore", "uxtheme",
+		"shlwapi", "authz", "userenv", "ntdll", "winmm",
+		"runtimeobject", "setupapi", "d3d11", "d3d12", "dxguid",
+		"shcore", "wtsapi32",
+	}
+	info.LinkLibs = append(info.LinkLibs, winLibs...)
+	return info
+}
+
 func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	tmpFile := filepath.Join(os.TempDir(), "ewdk-env-after-setup.txt")
 	os.Remove(tmpFile)
@@ -293,8 +415,10 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 	}
 
 	execDir := getExecDir()
-	qtInclude := filepath.Join(execDir, "qt_static", "include")
-	qtLib := filepath.Join(execDir, "qt_static", "lib")
+	qtBaseDir := filepath.Join(execDir, "qt_static")
+	qtInclude := filepath.Join(qtBaseDir, "include")
+	qtLib := filepath.Join(qtBaseDir, "lib")
+	qtInfo := scanQtStaticDir(qtBaseDir)
 
 	um := ewdkUMEnv{
 		IncludeDirs: append([]string{
@@ -303,7 +427,14 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 			ucrtInc,
 			qtInclude,
 		}, vcInc...),
-		LibDirs: append([]string{umLib, ucrtLib, qtLib}, vcLib...),
+		LibDirs:            append([]string{umLib, ucrtLib, qtLib}, vcLib...),
+		QtIncludeDirs:      qtInfo.IncludeDirs,
+		QtPluginDirs:       qtInfo.PluginDirs,
+		QtVersion:          qtInfo.Version,
+		QtCompileDefs:      qtInfo.CompileDefs,
+		QtCompileOptions:   qtInfo.CompileOptions,
+		QtLinkLibs:         qtInfo.LinkLibs,
+		MsvcRuntimeLibrary: qtInfo.MsvcRuntimeLibrary,
 	}
 
 	return ewdkEnv{
@@ -352,6 +483,41 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString("\n# ---- UM (User-Mode) ----\n")
 	writeList(&b, "WDK_UM_INCLUDE_DIRS", env.UM.IncludeDirs)
 	writeList(&b, "WDK_UM_LIB_DIRS", env.UM.LibDirs)
+
+	if len(env.UM.QtIncludeDirs) > 0 {
+		b.WriteString("\n# ---- Qt Static ----\n")
+		b.WriteString(fmt.Sprintf("set(QT_VERSION \"%s\")\n", env.UM.QtVersion))
+		writeList(&b, "QT_INCLUDE_DIRS", env.UM.QtIncludeDirs)
+		writeList(&b, "QT_PLUGIN_DIRS", env.UM.QtPluginDirs)
+		b.WriteString("set(QT_BASE_DIR \"\")\n")
+		b.WriteString(`foreach(_inc ${WDK_UM_INCLUDE_DIRS})
+    if(_inc MATCHES "qt_static")
+        get_filename_component(QT_BASE_DIR "${_inc}" DIRECTORY)
+        break()
+    endif()
+endforeach()
+`)
+		b.WriteString("set(QT_LIB_DIR \"${QT_BASE_DIR}/lib\")\n")
+		b.WriteString(fmt.Sprintf("set(QT_MSVC_RUNTIME_LIBRARY \"%s\")\n", env.UM.MsvcRuntimeLibrary))
+		b.WriteString("\n# Qt Compile Definitions\n")
+		b.WriteString("set(QT_COMPILE_DEFINITIONS\n")
+		for _, def := range env.UM.QtCompileDefs {
+			b.WriteString(fmt.Sprintf("    %s\n", def))
+		}
+		b.WriteString(")\n")
+		b.WriteString("\n# Qt Compile Options\n")
+		b.WriteString("set(QT_COMPILE_OPTIONS\n")
+		for _, opt := range env.UM.QtCompileOptions {
+			b.WriteString(fmt.Sprintf("    %s\n", opt))
+		}
+		b.WriteString(")\n")
+		b.WriteString("\n# Qt Link Libraries\n")
+		b.WriteString("set(QT_LINK_LIBRARIES\n")
+		for _, lib := range env.UM.QtLinkLibs {
+			b.WriteString(fmt.Sprintf("    %s\n", cm(lib)))
+		}
+		b.WriteString(")\n")
+	}
 
 	b.WriteString("\n# ---- Compiler ----\n")
 	b.WriteString(fmt.Sprintf("set(CMAKE_C_COMPILER \"%s\" CACHE FILEPATH \"\" FORCE)\n", cm(c.CC)))
@@ -561,7 +727,22 @@ function(um_dll _target)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL"
         )
-    set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    if(DEFINED QT_INCLUDE_DIRS AND NOT "${QT_INCLUDE_DIRS}" STREQUAL "")
+        cmake_policy(SET CMP0117 NEW)
+        set_target_properties(${_target} PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+            MSVC_RUNTIME_LIBRARY "${QT_MSVC_RUNTIME_LIBRARY}"
+        )
+        target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+        target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
+        target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
+        target_link_libraries(${_target} ${QT_LINK_LIBRARIES})
+    else()
+        set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})

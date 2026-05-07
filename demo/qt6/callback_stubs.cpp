@@ -1,0 +1,121 @@
+// Stub implementations for Go-side virtual method callbacks.
+// These are provided by the Go runtime in normal builds.
+// For standalone DLL compilation, these stubs allow linking to succeed.
+
+#include < QVariant>
+
+class QPaintDevice;
+class QPainter;
+class QSize;
+class QPaintEngine;
+
+extern "C" {
+
+#define STUB_VOID(fn) void fn() {}
+#define STUB_BOOL(fn) bool fn() { return false; }
+#define STUB_INT(fn) int fn() { return 0; }
+#define STUB_QPAINTDEVICE(fn) QPaintDevice* fn() { return nullptr; }
+#define STUB_QPAINTER(fn) QPainter* fn() { return nullptr; }
+#define STUB_QSIZE(fn) QSize* fn() { return nullptr; }
+#define STUB_QPAINTENGINE(fn) QPaintEngine* fn() { return nullptr; }
+
+STUB_VOID(miqt_exec_callback_QCoreApplication_aboutToQuit)
+STUB_VOID(miqt_exec_callback_QCoreApplication_applicationDisplayNameChanged)
+STUB_VOID(miqt_exec_callback_QCoreApplication_applicationNameChanged)
+STUB_VOID(miqt_exec_callback_QCoreApplication_applicationVersionChanged)
+STUB_VOID(miqt_exec_callback_QCoreApplication_exec)
+STUB_VOID(miqt_exec_callback_QCoreApplication_installNativeEventFilter)
+STUB_VOID(miqt_exec_callback_QCoreApplication_organizationDomainChanged)
+STUB_VOID(miqt_exec_callback_QCoreApplication_organizationNameChanged)
+STUB_VOID(miqt_exec_callback_QCoreApplication_removeNativeEventFilter)
+STUB_VOID(miqt_exec_callback_QCoreApplication_timerEvent)
+STUB_VOID(miqt_exec_callback_QCoreApplication_childEvent)
+STUB_VOID(miqt_exec_callback_QCoreApplication_customEvent)
+STUB_VOID(miqt_exec_callback_QCoreApplication_connectNotify)
+STUB_VOID(miqt_exec_callback_QCoreApplication_disconnectNotify)
+STUB_BOOL(miqt_exec_callback_QCoreApplication_event)
+STUB_BOOL(miqt_exec_callback_QCoreApplication_eventFilter)
+STUB_BOOL(miqt_exec_callback_QCoreApplication_notify)
+
+STUB_VOID(miqt_exec_callback_QObject_childEvent)
+STUB_VOID(miqt_exec_callback_QObject_connectNotify)
+STUB_VOID(miqt_exec_callback_QObject_customEvent)
+STUB_VOID(miqt_exec_callback_QObject_destroyed)
+STUB_VOID(miqt_exec_callback_QObject_destroyedWithQObject)
+STUB_VOID(miqt_exec_callback_QObject_disconnectNotify)
+STUB_VOID(miqt_exec_callback_QObject_timerEvent)
+STUB_BOOL(miqt_exec_callback_QObject_event)
+STUB_BOOL(miqt_exec_callback_QObject_eventFilter)
+
+STUB_VOID(miqt_exec_callback_QPushButton_focusInEvent)
+STUB_VOID(miqt_exec_callback_QPushButton_focusOutEvent)
+STUB_VOID(miqt_exec_callback_QPushButton_initStyleOption)
+STUB_VOID(miqt_exec_callback_QPushButton_keyPressEvent)
+STUB_VOID(miqt_exec_callback_QPushButton_mouseMoveEvent)
+STUB_VOID(miqt_exec_callback_QPushButton_paintEvent)
+STUB_BOOL(miqt_exec_callback_QPushButton_event)
+STUB_BOOL(miqt_exec_callback_QPushButton_hitButton)
+STUB_QSIZE(miqt_exec_callback_QPushButton_sizeHint)
+STUB_QSIZE(miqt_exec_callback_QPushButton_minimumSizeHint)
+
+STUB_VOID(miqt_exec_callback_QTimer_childEvent)
+STUB_VOID(miqt_exec_callback_QTimer_connectNotify)
+STUB_VOID(miqt_exec_callback_QTimer_customEvent)
+STUB_VOID(miqt_exec_callback_QTimer_disconnectNotify)
+STUB_VOID(miqt_exec_callback_QTimer_timerEvent)
+STUB_BOOL(miqt_exec_callback_QTimer_event)
+STUB_BOOL(miqt_exec_callback_QTimer_eventFilter)
+
+STUB_VOID(miqt_exec_callback_QWidget_actionEvent)
+STUB_VOID(miqt_exec_callback_QWidget_changeEvent)
+STUB_VOID(miqt_exec_callback_QWidget_childEvent)
+STUB_VOID(miqt_exec_callback_QWidget_closeEvent)
+STUB_VOID(miqt_exec_callback_QWidget_connectNotify)
+STUB_VOID(miqt_exec_callback_QWidget_contextMenuEvent)
+STUB_VOID(miqt_exec_callback_QWidget_customContextMenuRequested)
+STUB_VOID(miqt_exec_callback_QWidget_customEvent)
+STUB_VOID(miqt_exec_callback_QWidget_disconnectNotify)
+STUB_VOID(miqt_exec_callback_QWidget_dragEnterEvent)
+STUB_VOID(miqt_exec_callback_QWidget_dragLeaveEvent)
+STUB_VOID(miqt_exec_callback_QWidget_dragMoveEvent)
+STUB_VOID(miqt_exec_callback_QWidget_dropEvent)
+STUB_VOID(miqt_exec_callback_QWidget_enterEvent)
+STUB_VOID(miqt_exec_callback_QWidget_focusInEvent)
+STUB_VOID(miqt_exec_callback_QWidget_focusOutEvent)
+STUB_VOID(miqt_exec_callback_QWidget_hideEvent)
+STUB_VOID(miqt_exec_callback_QWidget_initPainter)
+STUB_VOID(miqt_exec_callback_QWidget_inputMethodEvent)
+STUB_VOID(miqt_exec_callback_QWidget_keyPressEvent)
+STUB_VOID(miqt_exec_callback_QWidget_keyReleaseEvent)
+STUB_VOID(miqt_exec_callback_QWidget_leaveEvent)
+STUB_VOID(miqt_exec_callback_QWidget_mouseDoubleClickEvent)
+STUB_VOID(miqt_exec_callback_QWidget_mouseMoveEvent)
+STUB_VOID(miqt_exec_callback_QWidget_mousePressEvent)
+STUB_VOID(miqt_exec_callback_QWidget_mouseReleaseEvent)
+STUB_VOID(miqt_exec_callback_QWidget_moveEvent)
+STUB_VOID(miqt_exec_callback_QWidget_paintEvent)
+STUB_VOID(miqt_exec_callback_QWidget_resizeEvent)
+STUB_VOID(miqt_exec_callback_QWidget_setVisible)
+STUB_VOID(miqt_exec_callback_QWidget_showEvent)
+STUB_VOID(miqt_exec_callback_QWidget_tabletEvent)
+STUB_VOID(miqt_exec_callback_QWidget_timerEvent)
+STUB_VOID(miqt_exec_callback_QWidget_wheelEvent)
+STUB_VOID(miqt_exec_callback_QWidget_windowIconChanged)
+STUB_VOID(miqt_exec_callback_QWidget_windowIconTextChanged)
+STUB_VOID(miqt_exec_callback_QWidget_windowTitleChanged)
+STUB_BOOL(miqt_exec_callback_QWidget_event)
+STUB_BOOL(miqt_exec_callback_QWidget_eventFilter)
+STUB_BOOL(miqt_exec_callback_QWidget_focusNextPrevChild)
+STUB_BOOL(miqt_exec_callback_QWidget_hasHeightForWidth)
+STUB_BOOL(miqt_exec_callback_QWidget_nativeEvent)
+STUB_INT(miqt_exec_callback_QWidget_devType)
+STUB_INT(miqt_exec_callback_QWidget_heightForWidth)
+STUB_INT(miqt_exec_callback_QWidget_metric)
+STUB_QPAINTDEVICE(miqt_exec_callback_QWidget_redirected)
+STUB_QPAINTER(miqt_exec_callback_QWidget_sharedPainter)
+STUB_QSIZE(miqt_exec_callback_QWidget_sizeHint)
+STUB_QSIZE(miqt_exec_callback_QWidget_minimumSizeHint)
+STUB_QPAINTENGINE(miqt_exec_callback_QWidget_paintEngine)
+STUB_BOOL(miqt_exec_callback_QWidget_inputMethodQuery)
+
+}
