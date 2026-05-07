@@ -10,6 +10,6 @@ back/
 /build_debug/
 ewdk.exe
 todo/
-qt6-static/
-qt-static/
+/qt6-static/
+/qt_static/
 qt-6.11.0-static-windows.zip
