@@ -260,7 +260,7 @@ func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
 		}
 	}
 	libDir := filepath.Join(qtBaseDir, "lib")
-	panic(info.version)
+	panic(info.Version)
 	info.CompileDefs = []string{
 		"QT_BUILDING_QT",
 		"MIQT_BUILDING_DLL",
