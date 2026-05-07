@@ -106,7 +106,26 @@ func main() {
 	mylog.Success("Environment ready. Run build.bat to start building.")
 }
 
-const isoPath = `D:\ux\examples\ewdk\EWDK_br_release_28000_251103-1709.iso`
+func getExecDir() string {
+	execDir, _ := os.Executable()
+	return filepath.Dir(execDir)
+}
+
+func resolveISOPath() string {
+	if os.Getenv("GITHUB_WORKSPACE") != "" {
+		iso := filepath.Join(os.Getenv("TEMP"), "ewdk.iso")
+		if !stream.FileExists(iso) {
+			panic("CI env: ewdk.iso not found in TEMP")
+		}
+		return iso
+	}
+	execDir := getExecDir()
+	files, _ := filepath.Glob(filepath.Join(execDir, "EWDK_*.iso"))
+	if len(files) == 0 {
+		panic("No ISO file found in: " + execDir)
+	}
+	return files[0]
+}
 
 const testSignCertName = "WDKTestCert"
 
@@ -128,20 +147,6 @@ func ensureTestCertificate() {
 		return
 	}
 	fmt.Printf("  [OK]   Created test certificate '%s'\n", testSignCertName)
-}
-
-func resolveISOPath() string {
-	if os.Getenv("GITHUB_WORKSPACE") != "" {
-		iso := filepath.Join(os.Getenv("TEMP"), "ewdk.iso")
-		if !stream.FileExists(iso) {
-			panic("CI env: ewdk.iso not found in TEMP")
-		}
-		return iso
-	}
-	if !stream.FileExists(isoPath) {
-		panic("ISO file not found: " + isoPath)
-	}
-	return isoPath
 }
 
 func cleanGenerated() {
@@ -287,13 +292,18 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 		},
 	}
 
+	execDir := getExecDir()
+	qtInclude := filepath.Join(execDir, "qt_static", "include")
+	qtLib := filepath.Join(execDir, "qt_static", "lib")
+
 	um := ewdkUMEnv{
 		IncludeDirs: append([]string{
 			filepath.Join(pre, "shared"),
 			filepath.Join(pre, "um"),
 			ucrtInc,
+			qtInclude,
 		}, vcInc...),
-		LibDirs: append([]string{umLib, ucrtLib}, vcLib...),
+		LibDirs: append([]string{umLib, ucrtLib, qtLib}, vcLib...),
 	}
 
 	return ewdkEnv{

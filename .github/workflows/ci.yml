@@ -28,6 +28,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Download and extract Qt6 Static
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $qtUrl = "https://github.com/AllanChain/install-qt-static/releases/download/v6.11.0-1/qt-6.11.0-static-windows.zip"
+          Write-Host "Downloading Qt6 Static from: $qtUrl"
+          Invoke-WebRequest -Uri $qtUrl -OutFile "qt-static.zip" -UseBasicParsing
+          Expand-Archive -Path "qt-static.zip" -DestinationPath "qt_static" -Force
+          Remove-Item "qt-static.zip" -Force
+          $includeDir = Get-ChildItem "qt_static" -Directory | Select-Object -First 1
+          if (Test-Path "$($includeDir.FullName)\include") {
+            Move-Item "$($includeDir.FullName)\*" "." -Force
+            Remove-Item $includeDir -Recurse -Force
+          }
+          Write-Host "Qt6 Static extracted to: $(Get-Location)\qt_static"
+          Get-ChildItem "qt_static" | Select-Object Name
+
       - name: Install aria2
         run: |
           $ProgressPreference = 'SilentlyContinue'
