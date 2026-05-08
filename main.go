@@ -259,8 +259,10 @@ func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
 			}
 		}
 	}
+	if info.Version == "" {
+		panic(fmt.Sprintf("Qt version detection failed: %s not found or empty. Check CI yml download/extract step", qtCoreDir))
+	}
 	libDir := filepath.Join(qtBaseDir, "lib")
-	panic(info.Version)
 	info.CompileDefs = []string{
 		"QT_BUILDING_QT",
 		"MIQT_BUILDING_DLL",
