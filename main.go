@@ -114,9 +114,8 @@ func main() {
 }
 
 func getExecDir() string {
-	if os.Getenv("GITHUB_ACTIONS") != "" {
-		wd, _ := os.Getwd()
-		return wd
+	if workspace := os.Getenv("GITHUB_WORKSPACE"); workspace != "" {
+		return workspace
 	}
 	execDir, _ := os.Executable()
 	return filepath.Dir(execDir)
