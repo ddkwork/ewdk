@@ -291,40 +291,31 @@ func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
 		"/permissive-",
 		"/utf-8",
 	}
-	qtLibs := []string{
-		"Qt6Core", "Qt6Gui", "Qt6Widgets", "Qt6Network",
-		"Qt6OpenGL", "Qt6OpenGLWidgets",
-		"Qt6BundledHarfbuzz", "Qt6BundledFreetype",
-		"Qt6BundledLibpng", "Qt6BundledLibjpeg",
-		"Qt6BundledPcre2", "Qt6BundledZLIB",
-		"Qt6Concurrent", "Qt6FbSupport",
-		"Qt6DeviceDiscoverySupport", "Qt6EntryPoint", "Qt6Xml",
-	}
-	for _, lib := range qtLibs {
-		libPath := filepath.Join(libDir, lib+".lib")
-		if _, err := os.Stat(libPath); err == nil {
-			info.LinkLibs = append(info.LinkLibs, libPath)
+	entries, err := os.ReadDir(libDir)
+	if err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".lib") {
+				name := entry.Name()
+				if strings.HasPrefix(name, "Qt6") {
+					info.LinkLibs = append(info.LinkLibs, name)
+				}
+			}
 		}
 	}
-	pluginLibs := []struct{ cat, name string }{
-		{"platforms", "qwindows"},
-		{"styles", "qmodernwindowsstyle"},
-	}
+	pluginLibs := []string{"qwindows.lib", "qmodernwindowsstyle.lib"}
 	for _, plib := range pluginLibs {
-		libPath := filepath.Join(pluginDir, plib.cat, plib.name+".lib")
-		if _, err := os.Stat(libPath); err == nil {
-			info.LinkLibs = append(info.LinkLibs, libPath)
-		}
+		info.LinkLibs = append(info.LinkLibs, plib)
 	}
 	winLibs := []string{
-		"icu", "icuin", "icuuc",
-		"advapi32", "shell32", "ole32", "oleaut32", "uuid",
-		"user32", "gdi32", "comdlg32", "winspool", "imm32", "version", "ws2_32",
-		"dwmapi", "d3d9", "dwrite", "dxgi", "netapi32", "opengl32",
-		"uiautomationcore", "uxtheme",
-		"shlwapi", "authz", "userenv", "ntdll", "winmm",
-		"runtimeobject", "setupapi", "d3d11", "d3d12", "dxguid",
-		"shcore", "wtsapi32",
+		"icu.lib", "icuin.lib", "icuuc.lib",
+		"advapi32.lib", "shell32.lib", "ole32.lib", "oleaut32.lib", "uuid.lib",
+		"user32.lib", "gdi32.lib", "comdlg32.lib", "winspool.lib", "imm32.lib", "version.lib", "ws2_32.lib",
+		"dwmapi.lib", "d3d9.lib", "dwrite.lib", "dxgi.lib", "netapi32.lib", "opengl32.lib",
+		"uiautomationcore.lib", "uxtheme.lib",
+		"shlwapi.lib", "authz.lib", "userenv.lib", "ntdll.lib", "winmm.lib",
+		"runtimeobject.lib", "setupapi.lib", "d3d11.lib", "d3d12.lib", "dxguid.lib",
+		"shcore.lib", "wtsapi32.lib",
+		"kernel32.lib", "Mpr.lib", "Secur32.lib", "Iphlpapi.lib", "Winhttp.lib", "Dnsapi.lib",
 	}
 	info.LinkLibs = append(info.LinkLibs, winLibs...)
 	return info
@@ -433,7 +424,10 @@ func runSetupBuildEnv(setupCmd string) (ewdkEnv, error) {
 			ucrtInc,
 			qtInclude,
 		}, vcInc...),
-		LibDirs:            append([]string{umLib, ucrtLib, qtLib}, vcLib...),
+		LibDirs: append([]string{umLib, ucrtLib, qtLib,
+			filepath.Join(qtBaseDir, "plugins", "platforms"),
+			filepath.Join(qtBaseDir, "plugins", "styles"),
+		}, vcLib...),
 		QtIncludeDirs:      qtInfo.IncludeDirs,
 		QtPluginDirs:       qtInfo.PluginDirs,
 		QtVersion:          qtInfo.Version,
@@ -758,7 +752,6 @@ function(um_dll _target)
     foreach(_lib_dir ${WDK_UM_LIB_DIRS})
         target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
     endforeach()
-    target_link_libraries(${_target} kernel32.lib)
 endfunction()
 `)
 

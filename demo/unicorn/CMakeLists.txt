@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.16)
+
+set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+set(UNICORN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(UNICORN_INSTALL OFF CACHE BOOL "" FORCE)
+set(UNICORN_LEGACY_STATIC_ARCHIVE OFF CACHE BOOL "" FORCE)
+
+include_directories(${WDK_UM_INCLUDE_DIRS})
+link_directories(${WDK_UM_LIB_DIRS})
+
+add_subdirectory(unicorn)
