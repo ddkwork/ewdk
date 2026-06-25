@@ -265,21 +265,27 @@ function(um_dll ...)
 
 | 函数 | 用途 | 输出 | 关键选项 |
 |------|------|------|----------|
-| `km_sys(target [KMDF ver] srcs...)` | 内核驱动 | `.sys` | `KMDF` / `WINVER` / `NTDDI_VERSION` |
-| `km_lib(target [KMDF ver] srcs...)` | 内核库 | `.lib` | `KMDF` / `WINVER` / `NTDDI_VERSION` |
-| `um_exe(target [SUBSYSTEM s] srcs...)` | 用户态 EXE | `.exe` | `SUBSYSTEM CONSOLE\|WINCON\|WINDOWS\|WIN` / `WINVER` / `NTDDI_VERSION` |
-| `um_lib(target srcs...)` | 用户态静态库 | `.lib` | `WINVER` / `NTDDI_VERSION` |
-| `um_dll(target srcs...)` | 用户态 DLL | `.dll` | `WINVER` / `NTDDI_VERSION` |
+| `km_sys(target [WINVER] [NTDDI_VERSION] srcs... [LIBS l...] [DEFINES d...] [INCLUDES i...])` | 内核驱动 | `.sys` | `WINVER` / `NTDDI_VERSION` / `LIBS` / `DEFINES` / `INCLUDES` |
+| `km_lib(target [WINVER] [NTDDI_VERSION] srcs... [LIBS l...] [DEFINES d...] [INCLUDES i...])` | 内核库 | `.lib` | `WINVER` / `NTDDI_VERSION` / `LIBS` / `DEFINES` / `INCLUDES` |
+| `um_exe(target [SUBSYSTEM s] [SOURCES ...] [INCLUDES ...] [DEFINES ...] [LIBS ...] [COMPILE_OPTIONS ...] [NOAUTO])` | 用户态 EXE | `.exe` | `SUBSYSTEM` / `SOURCES` / `INCLUDES` / `DEFINES` / `LIBS` / `NOAUTO` |
+| `um_lib(target [SOURCES ...] [INCLUDES ...] [DEFINES ...] [LIBS ...] [COMPILE_OPTIONS ...])` | 用户态静态库 | `.lib` | `SOURCES` / `INCLUDES` / `DEFINES` / `LIBS` |
+| `um_dll(target [SOURCES ...] [INCLUDES ...] [DEFINES ...] [LIBS ...] [COMPILE_OPTIONS ...])` | 用户态 DLL | `.dll` | `SOURCES` / `INCLUDES` / `DEFINES` / `LIBS` |
+| `um_dp64(target [SOURCES ...] [LIBS ...] [DEFINES ...] [INCLUDES ...] [COMPILE_OPTIONS ...] [PLUGINSDK ...])` | x64 x64dbg 插件 | `.dp64` | 自动拷贝到 x64dbg plugins，支持 `PLUGINSDK`（自动解析 `pluginsdk/` 路径） |
+| `um_dp86(target [SOURCES ...] [LIBS ...] [DEFINES ...] [INCLUDES ...] [COMPILE_OPTIONS ...] [PLUGINSDK ...])` | x86 x32dbg 插件 | `.dp32` | x86 交叉编译，自动拷贝到 x32dbg plugins，支持 `PLUGINSDK` |
 
 ### 函数行为细节
 
-**km_sys**: 自动链接 `WDK::NTOSKRNL` `WDK::HAL` `WDK::WMILIB` + `WDK::BUFFEROVERFLOWK`（或 `BUFFEROVERFLOWFASTFAILK`）。KMDF 模式下额外链接 WdfDriverEntry.lib/WdfLdr.lib 并修改入口为 FxDriverEntry。非 KMDF 入口为 GsDriverEntry。`KM_TEST_SIGN=ON` 时自动用 signtool 签名。
+**km_sys**: 自动链接 `WDK::NTOSKRNL` `WDK::HAL` `WDK::WMILIB` + `WDK::BUFFEROVERFLOWK`（或 `BUFFEROVERFLOWFASTFAILK`）。入口为 GsDriverEntry。`KM_TEST_SIGN=ON` 时自动用 signtool 签名。支持 `LIBS`/`DEFINES`/`INCLUDES` 关键字参数。
 
-**um_exe**: 默认 SUBSYSTEM=CONSOLE。自动链接 kernel32.lib + user32.lib。设置 MSVC_RUNTIME_LIBRARY 为 MultiThreaded（Debug 为 MultiThreadedDebug）。
+**um_exe**: 默认 SUBSYSTEM=CONSOLE。自动链接 kernel32.lib + user32.lib（除非指定 `NOAUTO`）。支持 `SOURCES`/`INCLUDES`/`DEFINES`/`LIBS`/`COMPILE_OPTIONS` 关键字，也兼容旧式位置参数。
 
-**um_lib**: 纯静态库，设置 MSVC 运行时库。
+**um_lib**: 纯静态库，设置 MSVC 运行时库。支持 `SOURCES`/`INCLUDES`/`DEFINES`/`LIBS`/`COMPILE_OPTIONS` 关键字。
 
-**um_dll**: SHARED 库，自动定义 `_USRDLL` `_WINDLL`，链接 kernel32.lib。
+**um_dll**: SHARED 库，自动定义 `_USRDLL` `_WINDLL`，链接 kernel32.lib。支持 `SOURCES`/`INCLUDES`/`DEFINES`/`LIBS`/`COMPILE_OPTIONS` 关键字。
+
+**um_dp64**: x64 x64dbg 插件（.dp64）。`PLUGINSDK` 关键字自动添加 `${CMAKE_CURRENT_SOURCE_DIR}/pluginsdk` 到 include 路径，并将裸名（如 `x64bridge`）解析为 `${CMAKE_CURRENT_SOURCE_DIR}/pluginsdk/x64bridge`。构建后自动拷贝到 x64dbg plugins 目录。
+
+**um_dp86**: x86 x32dbg 插件（.dp32），使用 x86 交叉编译工具链。`PLUGINSDK` 同上，自动解析 `pluginsdk/` 路径并追加 `.lib` 后缀。构建后自动拷贝到 x32dbg plugins 目录。
 
 ## ewdk.cmake 中设置的变量
 

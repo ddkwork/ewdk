@@ -6,6 +6,7 @@ project(ZydisDemo)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_definitions(-DZYCORE_STATIC_BUILD -DZYDIS_STATIC_BUILD)
+add_compile_options(/utf-8)
 
 # --- User-mode static library (Zydis core + compat stubs) ---
 um_lib(Zydis Zydis.c ZydisCompat.c)
@@ -27,10 +28,8 @@ foreach(t
     target_link_libraries(${t} Zydis)
 endforeach()
 
-# --- Kernel-mode static lib (Zydis core only, no compat stubs) ---
-km_lib(ZydisKm Zydis.c)
-
-# --- Kernel-mode driver ---
-km_sys(ZydisWinKernel examples/ZydisWinKernel.c)
-target_include_directories(ZydisWinKernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ZydisWinKernel ZydisKm)
+# --- Kernel-mode: static lib + driver ---
+km_lib(ZydisKm Zydis.c DEFINES ZYAN_NO_LIBC ZYDIS_NO_LIBC)
+km_sys(ZydisWinKernel examples/ZydisWinKernel.c
+    DEFINES ZYAN_NO_LIBC ZYDIS_NO_LIBC
+    LIBS ZydisKm)

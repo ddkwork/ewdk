@@ -1,0 +1,61 @@
+name: Build Slim EWDK ISO
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      iso_url:
+        description: 'EWDK ISO 下载链接 (来自 https://go.microsoft.com/fwlink/?linkid=2315288)'
+        required: true
+        default: 'https://go.microsoft.com/fwlink/?linkid=2315288'
+
+permissions:
+  contents: write
+
+jobs:
+  slim:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full
+
+      - name: 下载 EWDK ISO
+        run: |
+          URL="${{ github.event.inputs.iso_url || 'https://go.microsoft.com/fwlink/?linkid=2315288' }}"
+          echo "下载中: $URL"
+          curl -sL -o /tmp/ewdk.iso "$URL"
+          ls -lh /tmp/ewdk.iso
+
+      - name: 解压 ISO
+        run: |
+          mkdir -p /tmp/iso
+          7z x /tmp/ewdk.iso -o/tmp/iso -y > /dev/null
+          ls /tmp/iso/
+
+      - name: 精简 EWDK
+        run: |
+          python3 slim-ewdk.py /tmp/iso ewdk-slim
+
+      - name: 打包为 7z
+        run: |
+          cd ewdk-slim
+          7z a -mx9 -mmt ../ewdk-slim.7z .
+          cd ..
+          ls -lh ewdk-slim.7z
+
+      - name: 上传 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewdk-slim
+          path: ewdk-slim/
+          retention-days: 7
+
+      - name: 上传 Release Asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ewdk-slim.7z

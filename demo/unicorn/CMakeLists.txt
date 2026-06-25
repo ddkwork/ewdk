@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
+include("C:/Program Files/CMake/bin/ewdk.cmake")
+
+project(unicorn)
+
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(UNICORN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(UNICORN_INSTALL OFF CACHE BOOL "" FORCE)
