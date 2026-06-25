@@ -316,6 +316,7 @@ func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
 		"runtimeobject.lib", "setupapi.lib", "d3d11.lib", "d3d12.lib", "dxguid.lib",
 		"shcore.lib", "wtsapi32.lib",
 		"kernel32.lib", "Mpr.lib", "Secur32.lib", "Iphlpapi.lib", "Winhttp.lib", "Dnsapi.lib",
+		"Propsys.lib", "Avrt.lib",
 	}
 	info.LinkLibs = append(info.LinkLibs, winLibs...)
 	return info
