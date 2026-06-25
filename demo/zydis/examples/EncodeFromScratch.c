@@ -30,9 +30,7 @@
  * Example on assembling a basic function returning `0x1337` in `rax`.
  */
 
-#include <Zydis/Zydis.h>
-#include <Zycore/LibC.h>
-#include <Zycore/API/Memory.h>
+#include "Zydis.h"
 
 #include <inttypes.h>
 

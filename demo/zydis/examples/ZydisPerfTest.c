@@ -29,9 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <Zycore/API/Terminal.h>
-#include <Zycore/LibC.h>
-#include <Zydis/Zydis.h>
+#include "Zydis.h"
 
 #if defined(ZYAN_WINDOWS)
 #   include <windows.h>

@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <Zydis/Zydis.h>
+#include "Zydis.h"
 
 int main(void)
 {

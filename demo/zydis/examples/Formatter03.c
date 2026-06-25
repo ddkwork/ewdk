@@ -30,9 +30,7 @@
  */
 
 #include <inttypes.h>
-#include <Zycore/Format.h>
-#include <Zycore/LibC.h>
-#include <Zydis/Zydis.h>
+#include "Zydis.h"
 
 /* ============================================================================================== */
 /* Static data                                                                                    */

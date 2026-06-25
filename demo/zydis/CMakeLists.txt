@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.16)
+project(ZydisDemo)
+
+um_exe(ZydisDisassemble       SUBSYSTEM WINCON examples/Disassemble.c        Zydis.c)
+um_exe(ZydisDisassembleSimple SUBSYSTEM WINCON examples/DisassembleSimple.c Zydis.c)
+um_exe(ZydisEncodeMov         SUBSYSTEM WINCON examples/EncodeMov.c          Zydis.c)
+um_exe(ZydisEncodeFromScratch SUBSYSTEM WINCON examples/EncodeFromScratch.c Zydis.c)
+um_exe(ZydisFormatter01       SUBSYSTEM WINCON examples/Formatter01.c        Zydis.c)
+um_exe(ZydisFormatter02       SUBSYSTEM WINCON examples/Formatter02.c        Zydis.c)
+um_exe(ZydisFormatter03       SUBSYSTEM WINCON examples/Formatter03.c        Zydis.c)
+um_exe(ZydisRewriteCode       SUBSYSTEM WINCON examples/RewriteCode.c        Zydis.c)

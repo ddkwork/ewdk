@@ -36,9 +36,7 @@
  * The example always consumes and generates code in 64-bit mode.
  */
 
-#include <Zydis/Zydis.h>
-#include <Zycore/LibC.h>
-#include <Zycore/API/Memory.h>
+#include "Zydis.h"
 
 #include <inttypes.h>
 
