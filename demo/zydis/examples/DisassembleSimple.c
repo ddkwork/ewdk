@@ -31,7 +31,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
-#include "Zydis.h"
+#include "ZydisCompat.h"
 
 int main(void)
 {

@@ -30,8 +30,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <inttypes.h>
-#include <Zydis/Zydis.h>
-#include <Zycore/LibC.h>
+#include "ZydisCompat.h"
 
 /* ============================================================================================== */
 /* Enums and types                                                                                */

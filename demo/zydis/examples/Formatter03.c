@@ -30,7 +30,7 @@
  */
 
 #include <inttypes.h>
-#include "Zydis.h"
+#include "ZydisCompat.h"
 
 /* ============================================================================================== */
 /* Static data                                                                                    */

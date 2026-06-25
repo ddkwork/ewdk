@@ -31,7 +31,7 @@
  */
 
 #include <inttypes.h>
-#include "Zydis.h"
+#include "ZydisCompat.h"
 
 /* ============================================================================================== */
 /* Enums and Types                                                                                */

@@ -31,8 +31,7 @@
  */
 
 #include <inttypes.h>
-#include <Zycore/LibC.h>
-#include <Zydis/Zydis.h>
+#include "ZydisCompat.h"
 #include <Zydis/Internal/EncoderData.h>
 
 /* ============================================================================================== */

@@ -35,9 +35,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#include <Zycore/API/Terminal.h>
-#include <Zycore/LibC.h>
-#include <Zydis/Zydis.h>
+#include "ZydisCompat.h"
 
 #ifdef ZYAN_WINDOWS
 #   include <fcntl.h>

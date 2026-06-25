@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include "Zydis.h"
+#include "ZydisCompat.h"
 
 #if defined(ZYAN_WINDOWS)
 #   include <windows.h>

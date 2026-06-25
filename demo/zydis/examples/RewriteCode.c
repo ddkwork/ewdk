@@ -36,7 +36,7 @@
  * The example always consumes and generates code in 64-bit mode.
  */
 
-#include "Zydis.h"
+#include "ZydisCompat.h"
 
 #include <inttypes.h>
 

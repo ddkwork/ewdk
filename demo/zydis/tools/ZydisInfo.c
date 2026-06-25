@@ -34,9 +34,7 @@
 
 #include <inttypes.h>
 
-#include <Zycore/API/Terminal.h>
-#include <Zycore/LibC.h>
-#include <Zydis/Zydis.h>
+#include "ZydisCompat.h"
 
 /* ============================================================================================== */
 /* Colors                                                                                         */

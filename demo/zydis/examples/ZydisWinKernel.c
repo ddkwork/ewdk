@@ -37,7 +37,7 @@
 #include <ntimage.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include "Zydis.h"
+#include "ZydisCompat.h"
 
 /* ============================================================================================== */
 /* Forward declarations                                                                           */

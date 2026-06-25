@@ -27,9 +27,7 @@
 #ifndef ZYDIS_TOOLSSHARED_H
 #define ZYDIS_TOOLSSHARED_H
 
-#include <Zycore/API/Terminal.h>
-#include <Zycore/LibC.h>
-#include <Zydis/Zydis.h>
+#include "ZydisCompat.h"
 
 /* ============================================================================================== */
 /* Colors                                                                                         */
