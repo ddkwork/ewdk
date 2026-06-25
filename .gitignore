@@ -1,10 +1,15 @@
 *.cmd
-log.log
 .idea
-/bug.log
 dist/
 cmake-build-debug
+*.ps1
+*.log
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
 build/
+todo/
 back/
 *.iso
 /build_debug/
