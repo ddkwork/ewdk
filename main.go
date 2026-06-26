@@ -756,7 +756,7 @@ function(km_sys _target)
     add_executable(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
     set_target_properties(${_target} PROPERTIES SUFFIX ".sys")
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "${KM_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${KM_COMPILE_DEFINITIONS_DEBUG}>;_WIN32_WINNT=${WDK_WINVER}"
         )
@@ -920,7 +920,7 @@ function(um_exe _target)
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -1015,12 +1015,14 @@ function(um_dll _target)
             CXX_EXTENSIONS OFF
             MSVC_RUNTIME_LIBRARY "${QT_MSVC_RUNTIME_LIBRARY}"
         )
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
         target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
         target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
         target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
         target_link_libraries(${_target} ${QT_LINK_LIBRARIES})
     else()
         set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
     endif()
 
     if(WDK_NTDDI_VERSION)
@@ -1077,7 +1079,7 @@ function(um_dp64 _target)
         target_compile_definitions(${_target} PRIVATE ${WDK_DEFINES})
     endif()
 
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
     if(WDK_COMPILE_OPTIONS)
         target_compile_options(${_target} PRIVATE ${WDK_COMPILE_OPTIONS})
     endif()
@@ -1224,7 +1226,7 @@ function(um_dp86 _target)
         else()
             add_custom_command(
                 OUTPUT "${_obj}"
-                COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
                 DEPENDS "${_abs}"
                 COMMENT "Compiling x86: ${_target}_src${_src_idx}"
             )
@@ -1292,7 +1294,7 @@ function(um_exe_x86 _target)
             set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /MACHINE:X86")
         endif()
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1353,9 +1355,9 @@ function(um_exe_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
                     DEPENDS "${_abs}"
-                    COMMENT "Compiling x86: ${_target}_src${_src_idx}"
+                    COMMENT "Assembling x86: ${_target}_src${_src_idx}"
                 )
             endif()
             math(EXPR _src_idx "${_src_idx} + 1")
@@ -1389,7 +1391,7 @@ function(um_dll_x86 _target)
             LINK_FLAGS "/MACHINE:X86"
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1448,7 +1450,7 @@ function(um_dll_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /EHsc
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86: ${_target}_src${_src_idx}"
                 )
@@ -1495,7 +1497,7 @@ function(um_lib_x86 _target)
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1547,7 +1549,7 @@ function(um_lib_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86: ${_target}_src${_src_idx}"
                 )
@@ -1571,7 +1573,7 @@ function(um_exe_mfc _target)
 
     add_executable(${_target} ${WDK_SOURCES})
 
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "_WIN32_WINNT=${WDK_WINVER};_AFX_STATIC${WDK_DEFINITIONS}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -1648,7 +1650,7 @@ function(um_exe_mfc_x86 _target)
         else()
             add_custom_command(
                 OUTPUT "${_obj}"
-                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
                 DEPENDS "${_abs}"
                 COMMENT "Compiling x86: ${_target}_src${_src_idx}"
             )
