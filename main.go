@@ -205,8 +205,9 @@ function(collect_sources)
 endfunction()
 
 # generate_unity(unity_name src1 src2 ...)：
-#   生成一个 unity.cpp 文件，内容为 #include 所有源文件。
+#   生成一个 unity.cpp 文件，用绝对路径 #include 所有源文件。
 #   编译此文件替代逐个编译，可获得合并编译的加速效果。
+#   用绝对路径而非相对路径，以兼容 x86 自定义命令模式。
 #   如遇 static 变量冲突，切回逐个编译即可。
 function(generate_unity _unity_name)
     set(_sources ${ARGN})
@@ -214,8 +215,7 @@ function(generate_unity _unity_name)
     file(WRITE ${_unity_file} "// Unity build - auto-generated\n")
     foreach(_src ${_sources})
         get_filename_component(_abs "${_src}" ABSOLUTE)
-        file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
-        file(APPEND ${_unity_file} "#include \"${_rel}\"\n")
+        file(APPEND ${_unity_file} "#include \"${_abs}\"\n")
     endforeach()
     set(UNITY_FILE "${_unity_file}" PARENT_SCOPE)
 endfunction()
