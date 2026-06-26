@@ -137,6 +137,11 @@ func resolveISOPath() string {
 	execDir := getExecDir()
 	files, _ := filepath.Glob(filepath.Join(execDir, "EWDK_*.iso"))
 	if len(files) == 0 {
+		// Fall back to current working directory (useful when running via "go run .")
+		cwd, _ := os.Getwd()
+		files, _ = filepath.Glob(filepath.Join(cwd, "EWDK_*.iso"))
+	}
+	if len(files) == 0 {
 		panic("No ISO file found in: " + execDir)
 	}
 	return files[0]
@@ -501,6 +506,10 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString("\n# ---- KM (Kernel-Mode) ----\n")
 	writeList(&b, "WDK_KM_INCLUDE_DIRS", env.KM.IncludeDirs)
 	writeList(&b, "WDK_KM_LIB_DIRS", env.KM.LibDirs)
+	if len(env.KM.IncludeDirs) >= 2 {
+		fmt.Fprintf(&b, "set(WDK_SHARED_INCLUDE_DIR \"%s\")\n", cm(env.KM.IncludeDirs[0]))
+		fmt.Fprintf(&b, "set(WDK_KM_INCLUDE_DIR \"%s\")\n", cm(env.KM.IncludeDirs[1]))
+	}
 
 	b.WriteString("\n# ---- UM (User-Mode) ----\n")
 	writeList(&b, "WDK_UM_INCLUDE_DIRS", env.UM.IncludeDirs)
@@ -592,14 +601,13 @@ endforeach()
 
 	b.WriteString(`
 set(KM_ADDITIONAL_FLAGS_FILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/wdkflags.h")
-file(WRITE ${KM_ADDITIONAL_FLAGS_FILE} "#pragma runtime_checks(\"suc\", off)")
+file(WRITE ${KM_ADDITIONAL_FLAGS_FILE} "#pragma runtime_checks(\"suc\", off)\n#pragma warning(disable: 4117)")
 
 set(KM_COMPILE_FLAGS
     "/Zp8"
     "/GF"
     "/GR-"
     "/Gz"
-    "/kernel"
     "/FIwarning.h"
     "/FI${KM_ADDITIONAL_FLAGS_FILE}"
     "/Oi"
@@ -679,6 +687,10 @@ endif()
 function(km_sys _target)
     cmake_parse_arguments(WDK "" "WINVER;NTDDI_VERSION" "LIBS;DEFINES;INCLUDES" ${ARGN})
 
+    # Strip CMake's default /EHsc (kernel mode doesn't want exceptions) — write to cache
+    string(REPLACE "/EHsc" "" _km_cxx_flags "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${_km_cxx_flags}" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+
     # Clear CMake's default MSVC link libraries (kernel32.lib etc.)
     set(CMAKE_C_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
     set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
@@ -686,13 +698,14 @@ function(km_sys _target)
     add_executable(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
     set_target_properties(${_target} PROPERTIES SUFFIX ".sys")
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "${KM_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${KM_COMPILE_DEFINITIONS_DEBUG}>;_WIN32_WINNT=${WDK_WINVER}"
         )
     set_target_properties(${_target} PROPERTIES LINK_FLAGS "${KM_LINK_FLAGS}")
     set_target_properties(${_target} PROPERTIES LINK_INTERFACE_LIBRARIES "")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
-    set_target_properties(${_target} PROPERTIES UNITY_BUILD ON)
+    #set_target_properties(${_target} PROPERTIES UNITY_BUILD ON)  # OFF temporarily for debugging
 
     # Kernel-mode C++ flags (RTTI off, exceptions off, disable CRT debug libs)
     target_compile_options(${_target} PRIVATE
@@ -701,6 +714,14 @@ function(km_sys _target)
         )
     foreach(_flag ${KM_COMPILE_FLAGS})
         target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:${_flag}>)
+    endforeach()
+
+    # Apply /kernel to each source file individually (allows per-file override)
+    get_target_property(_ks_sources ${_target} SOURCES)
+    foreach(_ks_src ${_ks_sources})
+        if(_ks_src MATCHES "\\.(c|cpp|cxx)$")
+            set_source_files_properties(${_ks_src} PROPERTIES COMPILE_FLAGS "/kernel")
+        endif()
     endforeach()
 
     target_link_options(${_target} PRIVATE
@@ -749,11 +770,19 @@ function(km_sys _target)
     endif()
 endfunction()
 
+# km_sys_cpp was removed — use km_sys instead (supports both C and C++).
+# The /kernel flag is now applied per-file, allowing per-file override.
+
 function(km_lib _target)
     cmake_parse_arguments(WDK "" "WINVER;NTDDI_VERSION" "LIBS;DEFINES;INCLUDES" ${ARGN})
 
+    # Strip CMake's default /EHsc (kernel mode doesn't want exceptions) — write to cache
+    string(REPLACE "/EHsc" "" _km_cxx_flags "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${_km_cxx_flags}" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+
     add_library(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "${KM_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${KM_COMPILE_DEFINITIONS_DEBUG};>_WIN32_WINNT=${WDK_WINVER}"
         )
@@ -805,6 +834,7 @@ function(um_exe _target)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_target_properties(${_target} PROPERTIES UNITY_BUILD ON)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -964,7 +994,7 @@ function(um_dp64 _target)
         target_compile_definitions(${_target} PRIVATE ${WDK_DEFINES})
     endif()
 
-    target_compile_options(${_target} PRIVATE /utf-8 /EHsc)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc>)
     if(WDK_COMPILE_OPTIONS)
         target_compile_options(${_target} PRIVATE ${WDK_COMPILE_OPTIONS})
     endif()
@@ -1179,7 +1209,7 @@ function(um_exe_x86 _target)
             set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /MACHINE:X86")
         endif()
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE /utf-8)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1269,7 +1299,7 @@ function(um_dll_x86 _target)
             UNITY_BUILD ON
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE /utf-8 /EHsc)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1367,7 +1397,7 @@ function(um_lib_x86 _target)
             UNITY_BUILD ON
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE /utf-8)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1435,6 +1465,7 @@ function(um_exe_mfc _target)
 
     add_executable(${_target} ${WDK_SOURCES})
 
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "_WIN32_WINNT=${WDK_WINVER};_AFX_STATIC${WDK_DEFINITIONS}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

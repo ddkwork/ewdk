@@ -35,7 +35,6 @@
 
 #include <wdm.h>
 #include <ntimage.h>
-#include <stdio.h>
 #include <stdarg.h>
 #include "ZydisCompat.h"
 
@@ -75,15 +74,12 @@ DriverEntry;
 VOID
 Print(
     _In_ PCCH Format,
-    _In_ ...
+    ...
     )
 {
-    CHAR message[512];
     va_list argList;
     va_start(argList, Format);
-    const int n = _vsnprintf_s(message, sizeof(message), sizeof(message) - 1, Format, argList);
-    message[n] = '\0';
-    vDbgPrintExWithPrefix("[ZYDIS] ", DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, message, argList);
+    vDbgPrintExWithPrefix("[ZYDIS] ", DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, Format, argList);
     va_end(argList);
 }
 
