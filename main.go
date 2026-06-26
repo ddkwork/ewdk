@@ -107,6 +107,10 @@ func main() {
 	mylog.Check(generateEwdkCmake(env, cmake.EwdkCmakeFile))
 	mylog.Success("Generated: ", cmake.EwdkCmakeFile)
 
+	unityFile := filepath.Join(cmake.BinDir, "unity.cmake")
+	mylog.Check(generateUnityCmake(unityFile))
+	mylog.Success("Generated: ", unityFile)
+
 	stream.CopyFile("ninja.exe", filepath.Join(cmake.BinDir, "ninja.exe"))
 
 	ensureTestCertificate()
@@ -169,8 +173,58 @@ func ensureTestCertificate() {
 	fmt.Printf("  [OK]   Created test certificate '%s'\n", testSignCertName)
 }
 
+func generateUnityCmake(outputPath string) error {
+	content := `# ── Source file collection ───────────────────────────────────
+# 复制此文件到项目中使用。
+#
+# 不用 CMake 原生 UNITY_BUILD（聚合编译）的原因：
+#   1. 不同源文件中的同名 static 变量/函数会冲突
+#   2. CMake 自动分桶(batch)策略不可控，排查问题困难
+#   3. x86 交叉编译(custom command mode)不支持 CMake 原生 unity
+# 改用手动收集 + 可选 unity.cpp 方案，控制权交给开发者。
+#
+# collect_sources(dir1 dir2 ... outvar)：
+#   扫描指定目录下的所有 .cpp 和 .c 文件，存入 outvar。
+#   发现 .asm 文件时输出警告（ewdk 模板已自动处理 asm）。
+function(collect_sources)
+    set(_dirs ${ARGN})
+    list(POP_BACK _dirs _outvar)
+    set(_files)
+    foreach(_d ${_dirs})
+        file(GLOB _cpp "${CMAKE_CURRENT_SOURCE_DIR}/${_d}/*.cpp")
+        list(APPEND _files ${_cpp})
+        file(GLOB _c "${CMAKE_CURRENT_SOURCE_DIR}/${_d}/*.c")
+        list(APPEND _files ${_c})
+        file(GLOB _asm "${CMAKE_CURRENT_SOURCE_DIR}/${_d}/*.asm")
+        if(_asm)
+            message(WARNING "collect_sources: .asm files in ${_d} are NOT included — "
+                            "ewdk templates auto-handle asm per architecture")
+        endif()
+    endforeach()
+    set(${_outvar} ${_files} PARENT_SCOPE)
+endfunction()
+
+# generate_unity(unity_name src1 src2 ...)：
+#   生成一个 unity.cpp 文件，内容为 #include 所有源文件。
+#   编译此文件替代逐个编译，可获得合并编译的加速效果。
+#   如遇 static 变量冲突，切回逐个编译即可。
+function(generate_unity _unity_name)
+    set(_sources ${ARGN})
+    set(_unity_file "${CMAKE_CURRENT_BINARY_DIR}/${_unity_name}.cpp")
+    file(WRITE ${_unity_file} "// Unity build - auto-generated\n")
+    foreach(_src ${_sources})
+        get_filename_component(_abs "${_src}" ABSOLUTE)
+        file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
+        file(APPEND ${_unity_file} "#include \"${_rel}\"\n")
+    endforeach()
+    set(UNITY_FILE "${_unity_file}" PARENT_SCOPE)
+endfunction()
+`
+	return os.WriteFile(outputPath, []byte(content), 0644)
+}
+
 func cleanGenerated() {
-	files := []string{cmake.EwdkCmakeFile}
+	files := []string{cmake.EwdkCmakeFile, filepath.Join(cmake.BinDir, "unity.cmake")}
 	for _, f := range files {
 		if stream.FileExists(f) {
 			mylog.Check(os.Remove(f))

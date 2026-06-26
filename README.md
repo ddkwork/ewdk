@@ -28,9 +28,10 @@ This will:
 1. Mount the EWDK ISO
 2. Execute `SetupBuildEnv.cmd amd64` and parse environment variables
 3. Generate `C:/Program Files/CMake/bin/ewdk.cmake` (complete WDK build module)
-4. Copy `ninja.exe` to `C:/Program Files/CMake/bin/`
-5. Create test signing certificate (`WDKTestCert`) if not exists
-6. Generate `C:/Program Files/CMake/bin/ewdk.env.json` (environment snapshot)
+4. Generate `C:/Program Files/CMake/bin/unity.cmake` (source collection + optional unity build helpers)
+5. Copy `ninja.exe` to `C:/Program Files/CMake/bin/`
+6. Create test signing certificate (`WDKTestCert`) if not exists
+7. Generate `C:/Program Files/CMake/bin/ewdk.env.json` (environment snapshot)
 
 ### Step 2: Build
 
@@ -71,6 +72,7 @@ d:\ewdk\
 Generated at runtime (not in repo):
 C:/Program Files/CMake/bin/
 ├── ewdk.cmake              # Complete WDK build module (auto-generated)
+├── unity.cmake             # Source collection + unity build helpers (auto-generated)
 ├── ewdk.env.json           # Environment snapshot (auto-generated)
 └── ninja.exe               # Ninja build tool (copied from project root)
 ```
@@ -148,19 +150,28 @@ All user mode functions automatically:
 - For EXE: link `kernel32.lib` + `user32.lib`
 - For DLL: define `_USRDLL` / `_WINDLL`, link `kernel32.lib`
 
-## Unity Build (Manual)
+## Unity Build (Manual, via unity.cpp)
 
-Unity Build (aka "merge compilation" or "single translation unit build") is **disabled by default** because it can cause symbol conflicts with `static` variables/functions across source files.
+Unity Build (aka "merge compilation") 默认关闭，原因是 CMake 原生 `UNITY_BUILD` 有以下问题：
+1. 不同源文件中的同名 `static` 变量/函数会冲突（如 `SwallowedException` / `VectoredHandler`）
+2. CMake 自动分桶策略不可控，排查问题困难
+3. x86 交叉编译（custom command mode）不支持 CMake 原生 unity
 
-For projects with **large numbers of source files** (e.g. 50+ files) where compilation speed is a concern, enable it manually in your `CMakeLists.txt`:
+如需合并编译加速，项目中提供了 `generate_unity()` 函数，手动生成 `unity.cpp` 文件 `#include` 所有源文件，由开发者自行控制编译方式：
 
 ```cmake
-# Enable unity build with large batch size
-set(CMAKE_UNITY_BUILD_BATCH_SIZE 64)
-set_target_properties(your_target PROPERTIES UNITY_BUILD ON)
+# 在 CMakeLists.txt 中调用
+collect_sources(
+    src/subdir1 src/subdir2
+    MY_SOURCES
+)
+
+# 生成 unity.cpp 并按需编译
+generate_unity(unity ${MY_SOURCES})
+# 然后用 unity.cpp 替换 SOURCES 中的文件列表
 ```
 
-For **x86 cross-compile targets** (`um_dp86`, `um_exe_x86`, `um_dll_x86`, `um_lib_x86`, `um_exe_mfc_x86`), unity build is implemented as auto-generated `_unity_<target>.cpp` that `#include`s all source files. Enable it by editing the ewdk.cmake template in `main.go`.
+遇到 static 变量冲突时，切回逐个文件编译即可。
 
 ## Configuration Variables
 

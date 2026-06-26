@@ -48,6 +48,7 @@ d:\ewdk\
 生成目标（不在仓库内）：
 C:/Program Files/CMake/bin/
 ├── ewdk.cmake          # [自动生成] 完整的 WDK 构建模块
+├── unity.cmake         # [自动生成] 源码收集 + 可选合并编译辅助函数
 ├── ewdk.env.json       # [自动生成] 环境变量 JSON 快照
 └── ninja.exe           # [自动复制] 从 d:\ewdk\ninja.exe 复制
 ```
@@ -160,14 +161,25 @@ Go 一次性生成完整的 `ewdk.cmake`，包含：
 - **Functions**: `km_sys` / `km_lib` / `um_exe` / `um_lib` / `um_dll`
 - **SignTool**: `KM_SIGNTOOL_PATH`（由 Go 动态查找 signtool.exe）
 
-### Step 5: 复制 ninja.exe 到 CMake bin 目录
+### Step 5: 生成 unity.cmake
+
+```go
+generateUnityCmake(filepath.Join(cmake.BinDir, "unity.cmake"))
+```
+
+生成 `unity.cmake` 到 `C:/Program Files/CMake/bin/`，提供：
+- `collect_sources(dir1 dir2 ... outvar)` — 扫描目录收集 .cpp/.c 文件
+- `generate_unity(name src1 src2 ...)` — 生成 unity.cpp 合并编译文件
+- 遇到 static 变量冲突时切回逐个文件编译即可
+
+### Step 6: 复制 ninja.exe 到 CMake bin 目录
 
 ```go
 stream.CopyFile("ninja.exe", filepath.Join(cmake.BinDir, "ninja.exe"))
 // 从 d:\ewdk\ninja.exe 复制到 C:/Program Files/CMake/bin/ninja.exe
 ```
 
-### Step 6: 确保测试签名证书存在
+### Step 7: 确保测试签名证书存在
 
 ```go
 ensureTestCertificate()
@@ -175,7 +187,7 @@ ensureTestCertificate()
 // 不存在则自动创建 New-SelfSignedCertificate -Type CodeSigningCert
 ```
 
-### Step 7: 生成 ewdk.env.json
+### Step 8: 生成 ewdk.env.json
 
 ```go
 envData := json.MarshalIndent(env, "", "  ")
@@ -183,7 +195,7 @@ os.WriteFile(cmake.EwdkEnvFile, envData, 0644)
 // 生成到 C:/Program Files/CMake/bin/ewdk.env.json
 ```
 
-### Step 8: 提示用户构建
+### Step 9: 提示用户构建
 
 ```go
 mylog.Success("Environment ready. Run build.bat to start building.")
@@ -287,13 +299,19 @@ function(um_dll ...)
 
 **um_dp86**: x86 x32dbg 插件（.dp32），使用 x86 交叉编译工具链。`PLUGINSDK` 同上，自动解析 `pluginsdk/` 路径并追加 `.lib` 后缀。构建后自动拷贝到 x32dbg plugins 目录。
 
-> **Unity Build**（合并编译）**默认关闭**。对于有大量源文件（如 50+ 文件）编译慢的项目，可在 `CMakeLists.txt` 中手动启用：
+> **Unity Build**（合并编译）**默认关闭**。CMake 原生 `UNITY_BUILD` 有以下问题：
+> - 不同源文件中的同名 `static` 变量/函数会冲突
+> - CMake 自动分桶策略不可控
+> - x86 交叉编译不支持 CMake 原生 unity
+>
+> 如需加速编译，`unity.cmake`（生成到 `C:/Program Files/CMake/bin/`）提供了 `collect_sources()` + `generate_unity()` 函数，手动生成 `unity.cpp` 合并编译：
 > ```cmake
-> # 设置较大的合并批次大小，编译巨快
-> set(CMAKE_UNITY_BUILD_BATCH_SIZE 64)
-> set_target_properties(你的目标名称 PROPERTIES UNITY_BUILD ON)
+> include("C:/Program Files/CMake/bin/unity.cmake")
+> collect_sources(src/subdir1 src/subdir2 MY_SOURCES)
+> generate_unity(unity ${MY_SOURCES})  # 生成 unity.cpp
+> # 用 ${UNITY_FILE} 替换 SOURCES 中的文件列表
 > ```
-> 注意：合并编译可能导致不同源文件中的同名 `static` 变量/函数冲突，遇到此类问题请关闭合并编译。
+> 遇到 static 冲突时切回逐个文件编译。
 
 ## ewdk.cmake 中设置的变量
 
