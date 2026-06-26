@@ -573,6 +573,9 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString(fmt.Sprintf("set(WDK_UM_INCLUDE_DIRS_X86 \"${WDK_UM_INCLUDE_DIRS}\")\n"))
 	writeList(&b, "WDK_UM_LIB_DIRS_X86", env.UM.LibDirsX86)
 	b.WriteString(fmt.Sprintf("set(X86_CL \"%s\" CACHE FILEPATH \"\" FORCE)\n", cm(c.CCX86)))
+	b.WriteString(fmt.Sprintf("set(X86_ML \"%s\")\n", cm(
+		filepath.Join(c.VCToolsInstallDir, "bin", "Hostx64", "x86", "ml.exe"),
+	)))
 	b.WriteString(fmt.Sprintf("set(X86_LINK \"%s\")\n", cm(
 		filepath.Join(c.VCToolsInstallDir, "bin", "Hostx64", "x86", "link.exe"),
 	)))
@@ -1202,21 +1205,31 @@ function(um_dp86 _target)
     set(_all_objs)
     set(_src_idx 0)
 
-    # Compile each source individually
+    # Compile each source individually (.cpp/.c with cl.exe, .asm with ml.exe)
     foreach(_src ${WDK_SOURCES})
         get_filename_component(_abs "${_src}" ABSOLUTE)
         get_filename_component(_ext "${_src}" EXT)
-        if(NOT _ext STREQUAL ".rc")
-            set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
-            list(APPEND _all_objs "${_obj}")
+        if(_ext STREQUAL ".rc")
+            continue()
+        endif()
+        set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
+        list(APPEND _all_objs "${_obj}")
+        if(_ext STREQUAL ".asm")
+            add_custom_command(
+                OUTPUT "${_obj}"
+                COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                DEPENDS "${_abs}"
+                COMMENT "Assembling x86: ${_target}_src${_src_idx}"
+            )
+        else()
             add_custom_command(
                 OUTPUT "${_obj}"
                 COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                 DEPENDS "${_abs}"
                 COMMENT "Compiling x86: ${_target}_src${_src_idx}"
             )
-            math(EXPR _src_idx "${_src_idx} + 1")
         endif()
+        math(EXPR _src_idx "${_src_idx} + 1")
     endforeach()
 
     # ---- Compile .rc files individually ----
@@ -1324,17 +1337,27 @@ function(um_exe_x86 _target)
         set(_all_objs "")
         set(_src_idx 0)
 
-        # Compile each source individually
+        # Compile each source individually (.cpp/.c with cl.exe, .asm with ml.exe)
         foreach(_src ${WDK_SOURCES})
             get_filename_component(_abs "${_src}" ABSOLUTE)
+            get_filename_component(_ext "${_src}" EXT)
             set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
             list(APPEND _all_objs "${_obj}")
-            add_custom_command(
-                OUTPUT "${_obj}"
-                COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
-                DEPENDS "${_abs}"
-                COMMENT "Compiling x86: ${_target}_src${_src_idx}"
-            )
+            if(_ext STREQUAL ".asm")
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                    DEPENDS "${_abs}"
+                    COMMENT "Assembling x86: ${_target}_src${_src_idx}"
+                )
+            else()
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                    DEPENDS "${_abs}"
+                    COMMENT "Compiling x86: ${_target}_src${_src_idx}"
+                )
+            endif()
             math(EXPR _src_idx "${_src_idx} + 1")
         endforeach()
 
@@ -1406,21 +1429,31 @@ function(um_dll_x86 _target)
         set(_all_objs "")
         set(_src_idx 0)
 
-        # Compile each source individually
+        # Compile each source individually (.cpp/.c with cl.exe, .asm with ml.exe)
         foreach(_src ${WDK_SOURCES})
             get_filename_component(_abs "${_src}" ABSOLUTE)
             get_filename_component(_ext "${_src}" EXT)
-            if(NOT _ext STREQUAL ".rc")
-                set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
-                list(APPEND _all_objs "${_obj}")
+            if(_ext STREQUAL ".rc")
+                continue()
+            endif()
+            set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
+            list(APPEND _all_objs "${_obj}")
+            if(_ext STREQUAL ".asm")
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                    DEPENDS "${_abs}"
+                    COMMENT "Assembling x86: ${_target}_src${_src_idx}"
+                )
+            else()
                 add_custom_command(
                     OUTPUT "${_obj}"
                     COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /EHsc
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86: ${_target}_src${_src_idx}"
                 )
-                math(EXPR _src_idx "${_src_idx} + 1")
             endif()
+            math(EXPR _src_idx "${_src_idx} + 1")
         endforeach()
 
         # Compile .rc files individually
@@ -1498,17 +1531,27 @@ function(um_lib_x86 _target)
         set(_all_objs "")
         set(_src_idx 0)
 
-        # Compile each source individually
+        # Compile each source individually (.cpp/.c with cl.exe, .asm with ml.exe)
         foreach(_src ${WDK_SOURCES})
             get_filename_component(_abs "${_src}" ABSOLUTE)
+            get_filename_component(_ext "${_src}" EXT)
             set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
             list(APPEND _all_objs "${_obj}")
-            add_custom_command(
-                OUTPUT "${_obj}"
-                COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
-                DEPENDS "${_abs}"
-                COMMENT "Compiling x86: ${_target}_src${_src_idx}"
-            )
+            if(_ext STREQUAL ".asm")
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                    DEPENDS "${_abs}"
+                    COMMENT "Assembling x86: ${_target}_src${_src_idx}"
+                )
+            else()
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                    DEPENDS "${_abs}"
+                    COMMENT "Compiling x86: ${_target}_src${_src_idx}"
+                )
+            endif()
             math(EXPR _src_idx "${_src_idx} + 1")
         endforeach()
 
@@ -1589,17 +1632,27 @@ function(um_exe_mfc_x86 _target)
     set(_all_objs "")
     set(_src_idx 0)
 
-    # Compile each source individually
+    # Compile each source individually (.cpp/.c with cl.exe, .asm with ml.exe)
     foreach(_src ${WDK_SOURCES})
         get_filename_component(_abs "${_src}" ABSOLUTE)
+        get_filename_component(_ext "${_src}" EXT)
         set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
         list(APPEND _all_objs "${_obj}")
-        add_custom_command(
-            OUTPUT "${_obj}"
-            COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
-            DEPENDS "${_abs}"
-            COMMENT "Compiling x86: ${_target}_src${_src_idx}"
-        )
+        if(_ext STREQUAL ".asm")
+            add_custom_command(
+                OUTPUT "${_obj}"
+                COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                DEPENDS "${_abs}"
+                COMMENT "Assembling x86: ${_target}_src${_src_idx}"
+            )
+        else()
+            add_custom_command(
+                OUTPUT "${_obj}"
+                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
+                DEPENDS "${_abs}"
+                COMMENT "Compiling x86: ${_target}_src${_src_idx}"
+            )
+        endif()
         math(EXPR _src_idx "${_src_idx} + 1")
     endforeach()
 
