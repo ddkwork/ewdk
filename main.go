@@ -629,6 +629,7 @@ string(CONCAT KM_LINK_FLAGS
     "/NODEFAULTLIB "
     "/SECTION:INIT,d "
     "/VERSION:10.0 "
+    "/FORCE:MULTIPLE "
     )
 `)
 
@@ -737,6 +738,7 @@ function(km_sys _target)
     set(_km_crt_stub "${CMAKE_CURRENT_BINARY_DIR}/km_crt_stubs.c")
     file(WRITE ${_km_crt_stub}
     "#include <crtdefs.h>
+    #include <stdio.h>
     int __cdecl __stdio_common_vsprintf_s(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, const char* _Format, _locale_t _Locale, char* _ArgList)
     {
         (void)_Options; (void)_Locale;
