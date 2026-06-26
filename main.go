@@ -749,6 +749,11 @@ function(km_sys _target)
         (void)_Options; (void)_Locale;
         return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
     }
+    int __cdecl __stdio_common_vsnprintf_s(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, size_t _MaxCount, const char* _Format, _locale_t _Locale, char* _ArgList)
+    {
+        (void)_Options; (void)_Locale; (void)_MaxCount;
+        return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
+    }
     ")
     target_sources(${_target} PRIVATE ${_km_crt_stub})
     set_source_files_properties(${_km_crt_stub} PROPERTIES COMPILE_FLAGS "/kernel")
