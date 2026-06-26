@@ -19,7 +19,7 @@ um_exe(NTMemory
         ${IMGUI_DIR}/imgui_tables.cpp
         ${IMGUI_DIR}/imgui_widgets.cpp
     INCLUDES ${IMGUI_DIR}
-    DEFINES _CRT_SECURE_NO_WARNINGS UNICODE _UNICODE
+    DEFINES _CRT_SECURE_NO_WARNINGS UNICODE _UNICODE IMGUI_DEFINE_MATH_OPERATORS
     NOAUTO
     LIBS d3d11.lib dxgi.lib ntdll.lib psapi.lib advapi32.lib
 )
