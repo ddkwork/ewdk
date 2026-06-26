@@ -287,6 +287,12 @@ function(um_dll ...)
 
 **um_dp86**: x86 x32dbg 插件（.dp32），使用 x86 交叉编译工具链。`PLUGINSDK` 同上，自动解析 `pluginsdk/` 路径并追加 `.lib` 后缀。构建后自动拷贝到 x32dbg plugins 目录。
 
+> **Unity Build 排異**：CMake 原生聚合编译。若某源文件因签名不一致等冲突不适合聚合（如 stub 文件 `extern "C"` 无参宏与实际声明不匹配），可用以下属性排除：
+> ```cmake
+> set_source_files_properties(path/to/file.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+> ```
+> 被排除的文件独立编译为单独 `.obj`，链接器按符号名拼合。
+
 ## ewdk.cmake 中设置的变量
 
 | 变量 | 说明 |

@@ -160,6 +160,16 @@ All user-mode templates automatically enable **Unity Build** (aka "merge compila
 
 **Footnote**: PCH (precompiled headers) is explicitly superseded by Unity Build — everything compiles at most once per translation unit, making PCH redundant.
 
+### Excluding files from Unity Build
+
+If a source file is incompatible with unity build (e.g., stub implementations with mismatched `extern "C"` signatures), exclude it per-file:
+
+```cmake
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/callback_stubs.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+```
+
+The excluded file compiles separately as its own `.obj` — linker resolves symbol mismatches by name.
+
 ## Configuration Variables
 
 | Variable | Default | Description |

@@ -577,6 +577,7 @@ endforeach()
 	b.WriteString("set(CMAKE_MSVC_RUNTIME_LIBRARY \"\" CACHE STRING \"\" FORCE)\n")
 	b.WriteString("set(CMAKE_INCLUDE_PATH \"${WDK_KM_INCLUDE_DIRS};${WDK_UM_INCLUDE_DIRS}\" CACHE STRING \"\" FORCE)\n")
 	b.WriteString("set(CMAKE_LIBRARY_PATH \"${WDK_KM_LIB_DIRS};${WDK_UM_LIB_DIRS}\" CACHE STRING \"\" FORCE)\n")
+	b.WriteString("set(CMAKE_UNITY_BUILD_BATCH_SIZE 50)\n")
 	b.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.CC))))
 	if _, err := os.Stat(c.RC); err == nil {
 		b.WriteString(fmt.Sprintf("list(APPEND CMAKE_PROGRAM_PATH \"%s\")\n", cm(filepath.Dir(c.RC))))
