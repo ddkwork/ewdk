@@ -717,6 +717,9 @@ function(km_sys _target)
         target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:${_flag}>)
     endforeach()
 
+    # /kernel via target_compile_options so PCH compilation picks it up
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/kernel>)
+
     # Apply /kernel to each source file individually (allows per-file override)
     get_target_property(_ks_sources ${_target} SOURCES)
     foreach(_ks_src ${_ks_sources})
@@ -729,6 +732,25 @@ function(km_sys _target)
         /NODEFAULTLIB:libucrtd.lib
         /NODEFAULTLIB:ucrtd.lib
         )
+
+    # Generate CRT stub for kernel-mode ucrt symbols
+    set(_km_crt_stub "${CMAKE_CURRENT_BINARY_DIR}/km_crt_stubs.c")
+    file(WRITE ${_km_crt_stub}
+    "#include <crtdefs.h>
+    int __cdecl __stdio_common_vsprintf_s(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, const char* _Format, _locale_t _Locale, char* _ArgList)
+    {
+        (void)_Options; (void)_Locale;
+        return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
+    }
+    int __cdecl __stdio_common_vsprintf(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, const char* _Format, _locale_t _Locale, char* _ArgList)
+    {
+        (void)_Options; (void)_Locale;
+        return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
+    }
+    ")
+    target_sources(${_target} PRIVATE ${_km_crt_stub})
+    set_source_files_properties(${_km_crt_stub} PROPERTIES COMPILE_FLAGS "/kernel")
+    set_source_files_properties(${_km_crt_stub} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -747,7 +769,7 @@ function(km_sys _target)
         target_include_directories(${_target} PRIVATE ${WDK_INCLUDES})
     endif()
 
-    target_link_libraries(${_target} WDK::NTOSKRNL WDK::HAL WDK::WMILIB)
+    target_link_libraries(${_target} WDK::NTOSKRNL WDK::HAL WDK::WMILIB WDK::LIBCNTPR)
 
     if(WDK::BUFFEROVERFLOWK)
         target_link_libraries(${_target} WDK::BUFFEROVERFLOWK)
@@ -796,6 +818,10 @@ function(km_lib _target)
     foreach(_flag ${KM_COMPILE_FLAGS})
         target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:${_flag}>)
     endforeach()
+    
+    # /kernel via target_compile_options so PCH compilation picks it up
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/kernel>)
+    
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
     endif()
