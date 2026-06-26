@@ -148,27 +148,19 @@ All user mode functions automatically:
 - For EXE: link `kernel32.lib` + `user32.lib`
 - For DLL: define `_USRDLL` / `_WINDLL`, link `kernel32.lib`
 
-## Unity Build (Automatic)
+## Unity Build (Manual)
 
-All user-mode templates automatically enable **Unity Build** (aka "merge compilation" or "single translation unit build"):
+Unity Build (aka "merge compilation" or "single translation unit build") is **disabled by default** because it can cause symbol conflicts with `static` variables/functions across source files.
 
-- **Native CMake targets** (`um_exe`, `um_lib`, `um_dll`, `um_dp64`, `um_exe_mfc`): `UNITY_BUILD ON` — CMake groups sources into batches and compiles each batch in a single `cl.exe` invocation. Default batch size is 8 files per batch.
-
-- **x86 cross-compile targets** (`um_dp86`, `um_exe_x86`, `um_dll_x86`, `um_lib_x86`, `um_exe_mfc_x86`): A single `_unity_<target>.cpp` is auto-generated in the build directory that `#include`s all source files. Only **one compilation** per target instead of N individual compilations.
-
-**Effect**: Instead of compiling 31 source files × 2 platforms = 62 times, a project needs roughly 4 (x64 batches) + 1 (x86 unity) = 5 compilations total. Build time drops from several minutes to under a minute.
-
-**Footnote**: PCH (precompiled headers) is explicitly superseded by Unity Build — everything compiles at most once per translation unit, making PCH redundant.
-
-### Excluding files from Unity Build
-
-If a source file is incompatible with unity build (e.g., stub implementations with mismatched `extern "C"` signatures), exclude it per-file:
+For projects with **large numbers of source files** (e.g. 50+ files) where compilation speed is a concern, enable it manually in your `CMakeLists.txt`:
 
 ```cmake
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/callback_stubs.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+# Enable unity build with large batch size
+set(CMAKE_UNITY_BUILD_BATCH_SIZE 64)
+set_target_properties(your_target PROPERTIES UNITY_BUILD ON)
 ```
 
-The excluded file compiles separately as its own `.obj` — linker resolves symbol mismatches by name.
+For **x86 cross-compile targets** (`um_dp86`, `um_exe_x86`, `um_dll_x86`, `um_lib_x86`, `um_exe_mfc_x86`), unity build is implemented as auto-generated `_unity_<target>.cpp` that `#include`s all source files. Enable it by editing the ewdk.cmake template in `main.go`.
 
 ## Configuration Variables
 
