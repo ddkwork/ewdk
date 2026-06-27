@@ -179,6 +179,11 @@ go build -v .
 | `format_all.cmd` | 一键格式化所有 C/C++ 源文件 |
 | `convert_encoding.py` | GBK→UTF-8 无 BOM 编码转换 |
 
+**复制后必须执行**：
+- 运行 `convert_encoding.py`：`python convert_encoding.py`，将目录下所有 GBK/GB2312 编码的源文件转换为 UTF-8 无 BOM
+- 运行 `format_all.cmd`：双击或执行 `format_all.cmd`，用 clang-format 格式化所有 C/C++ 源文件
+- 这两个文件**不能只是复制过去放着**，必须实际执行以确保代码格式和编码统一
+
 ### km_sys 内核驱动专属：install.bat / uninstall.bat
 
 如果项目类型是内核驱动（`km_sys`），额外生成安装/卸载脚本。
@@ -489,11 +494,12 @@ um_dll_x86(dll1_x86
 
 1. **零 if**：架构区分用两块独立代码，不用 `if(TARGET_ARCH ...)` 或 `if(WIN32)` 等
 2. **切勿修改 build.cmd / build.bat**：只生成/修改 CMakeLists.txt
-3. **切勿修改源文件**（`.cpp`/`.h`）：编译问题通过 CMakeLists.txt 解决，不碰源代码
-4. **不要添加 `set_target_properties(... UNITY_BUILD ON/OFF)`**：ewdk 不使用 CMake 原生 unity build
-5. **x86 是交叉编译**：x86 函数名带 `_x86` 后缀，参数名与 x64 不同（`INCLUDE_DIRS` / `DEFINITIONS` / `LINK_LIBS`）
-6. **通用系统 lib 不用写**：`WDK_UM_SDK_LIBS` + `WDK_UM_EXTRA_LIBS` 已自动链接
-7. **只用工程需要的 lib**：如果 vcxproj 引用了非默认的 lib（如 `ntdll.lib`、`crypt32.lib`、`winhttp.lib`、`dbghelp.lib` 等），仍然需要在 `LIBS`/`LINK_LIBS` 中显式列出
+3. **保留原始注释**：生成或修改文件时，不得删除用户原有的任何注释代码（包括被注释掉的代码段），仅可在必要时添加新注释或调整代码结构
+4. **切勿修改源文件**（`.cpp`/`.h`）：编译问题通过 CMakeLists.txt 解决，不碰源代码
+5. **不要添加 `set_target_properties(... UNITY_BUILD ON/OFF)`**：ewdk 不使用 CMake 原生 unity build
+6. **x86 是交叉编译**：x86 函数名带 `_x86` 后缀，参数名与 x64 不同（`INCLUDE_DIRS` / `DEFINITIONS` / `LINK_LIBS`）
+7. **通用系统 lib 不用写**：`WDK_UM_SDK_LIBS` + `WDK_UM_EXTRA_LIBS` 已自动链接
+8. **只用工程需要的 lib**：如果 vcxproj 引用了非默认的 lib（如 `ntdll.lib`、`crypt32.lib`、`winhttp.lib`、`dbghelp.lib` 等），仍然需要在 `LIBS`/`LINK_LIBS` 中显式列出
 
 ## 自动构建与修复
 
