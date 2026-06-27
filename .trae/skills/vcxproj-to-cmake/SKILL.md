@@ -165,6 +165,28 @@ go build -v .
 
 生成 CMakeLists.txt 后，在**同一目录**创建 `build.cmd`，内容就是上面的验证命令，这样用户一键即可构建 Release + Debug 并记录日志。
 
+## 生成辅助文件
+
+生成 CMakeLists.txt 和 build.cmd 后，根据项目类型在**同一目录**生成以下辅助文件。
+
+### 通用辅助文件（所有项目类型）
+
+以下三个文件在每个项目中都生成，内容直接从技能**自身目录**复制（它们与 `SKILL.md` 在同一目录，永久有效）：
+
+| 文件 | 用途 |
+|------|------|
+| `.clang-format` | 代码格式化配置（Google 风格缩进 4，列宽 120） |
+| `format_all.cmd` | 一键格式化所有 C/C++ 源文件 |
+| `convert_encoding.py` | GBK→UTF-8 无 BOM 编码转换 |
+
+### km_sys 内核驱动专属：install.bat / uninstall.bat
+
+如果项目类型是内核驱动（`km_sys`），额外生成安装/卸载脚本。
+
+#### `install.bat` / `uninstall.bat` — 安装/卸载驱动
+
+内容直接从技能目录复制（与 `SKILL.md` 同目录），**不要修改**。
+
 ## 工作流程
 
 ### Step 1: 阅读参考文件
