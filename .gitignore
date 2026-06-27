@@ -1,6 +1,7 @@
 *.cmd
 .idea
 dist/
+qt5/
 cmake-build-debug
 *.ps1
 *.log
