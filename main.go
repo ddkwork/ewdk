@@ -334,7 +334,7 @@ func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
 		"QT_BUILDING_QT",
 		"MIQT_BUILDING_DLL",
 		"MIQT_WINDOWSQTSTATIC",
-		"QT_STATIC",
+        "QT_STATIC",
 		"QT_NO_CAST_FROM_ASCII",
 		"QT_NO_CAST_TO_ASCII",
 		"QT_NO_EXCEPTIONS",
@@ -568,6 +568,37 @@ func generateEwdkCmake(env ewdkEnv, outputPath string) error {
 	b.WriteString("\n# ---- UM (User-Mode) ----\n")
 	writeList(&b, "WDK_UM_INCLUDE_DIRS", env.UM.IncludeDirs)
 	writeList(&b, "WDK_UM_LIB_DIRS", env.UM.LibDirs)
+	b.WriteString(`
+# 通用 Windows SDK libs（所有 UM 目标自动链接）
+set(WDK_UM_SDK_LIBS
+    kernel32.lib user32.lib gdi32.lib shell32.lib
+    ole32.lib oleaut32.lib advapi32.lib ws2_32.lib
+    shlwapi.lib comctl32.lib wbemuuid.lib psapi.lib
+    winmm.lib iphlpapi.lib mpr.lib
+)
+# WDK 扩展 libs（DDK 设备/电源相关）
+set(WDK_UM_EXTRA_LIBS setupapi.lib powrprof.lib slwga.lib)
+# KM 内核模式默认 libs（km_sys/km_lib 自动链接）
+set(WDK_KM_SDK_LIBS ntoskrnl.lib hal.lib wmilib.lib)
+set(WDK_KM_EXTRA_LIBS bufferoverflowk.lib)
+
+# ── ewdk.cmake 函数清单 ──────────────────────────────
+# km_sys(target)           — 内核驱动 .sys
+# km_lib(target)           — 内核静态库 .lib
+# um_exe(target)           — 用户态 EXE（自动链接 ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS}）
+# um_lib(target)           — 用户态静态库
+# um_dll(target)           — 用户态 DLL
+# um_dp64(target)          — x64 x64dbg 插件 .dp64
+# um_dp86(target)          — x86 x32dbg 插件 .dp32（交叉编译）
+# um_exe_x86(target)       — x86 EXE（交叉编译）
+# um_dll_x86(target)       — x86 DLL（交叉编译）
+# um_lib_x86(target)       — x86 静态库（交叉编译）
+# um_exe_mfc(target)       — MFC EXE（x64）
+# um_exe_mfc_x86(target)   — MFC EXE（x86 交叉编译）
+# collect_sources()        — 源码收集（来自 unity.cmake）
+# generate_unity()         — 合并编译（来自 unity.cmake）
+# ──────────────────────────────────────────────────
+`)
 
 	b.WriteString("\n# ---- UM x86 ----\n")
 	b.WriteString(fmt.Sprintf("set(WDK_UM_INCLUDE_DIRS_X86 \"${WDK_UM_INCLUDE_DIRS}\")\n"))
@@ -943,7 +974,7 @@ function(um_exe _target)
             target_link_libraries(${_target} ${WDK_LIBS})
         endif()
     else()
-        target_link_libraries(${_target} kernel32.lib user32.lib)
+        target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS})
         if(WDK_LIBS)
             target_link_libraries(${_target} ${WDK_LIBS})
         endif()
@@ -1039,7 +1070,7 @@ function(um_dll _target)
     if(WDK_INCLUDES)
         target_include_directories(${_target} PRIVATE ${WDK_INCLUDES})
     endif()
-    target_link_libraries(${_target} kernel32.lib user32.lib)
+    target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS})
     if(WDK_LIBS)
         target_link_libraries(${_target} ${WDK_LIBS})
     endif()
@@ -1298,7 +1329,7 @@ function(um_exe_x86 _target)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
-        target_link_libraries(${_target} kernel32.lib user32.lib ${WDK_LINK_LIBS})
+        target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS})
     else()
         # Custom command mode
         set(_output "${CMAKE_CURRENT_BINARY_DIR}/${_target}.exe")
@@ -1334,7 +1365,7 @@ function(um_exe_x86 _target)
             set(_subsys "/SUBSYSTEM:WINDOWS")
         endif()
 
-        set(_link_libs kernel32.lib user32.lib ${WDK_LINK_LIBS})
+        set(_link_libs ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS})
 
         set(_all_objs "")
         set(_src_idx 0)
@@ -1355,7 +1386,7 @@ function(um_exe_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
                     DEPENDS "${_abs}"
                     COMMENT "Assembling x86: ${_target}_src${_src_idx}"
                 )
@@ -1395,7 +1426,7 @@ function(um_dll_x86 _target)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
-        target_link_libraries(${_target} kernel32.lib user32.lib ${WDK_LINK_LIBS})
+        target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS})
     else()
         # Custom command mode
         set(_output "${CMAKE_CURRENT_BINARY_DIR}/${_target}${WDK_SUFFIX}")
@@ -1549,7 +1580,7 @@ function(um_lib_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86: ${_target}_src${_src_idx}"
                 )
@@ -1593,7 +1624,7 @@ function(um_exe_mfc _target)
     endif()
 
     set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /MACHINE:X64")
-    target_link_libraries(${_target} kernel32.lib user32.lib ${WDK_LINK_LIBS})
+    target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS})
 endfunction()
 
 function(um_exe_mfc_x86 _target)
@@ -1650,7 +1681,7 @@ function(um_exe_mfc_x86 _target)
         else()
             add_custom_command(
                 OUTPUT "${_obj}"
-                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
+                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
                 DEPENDS "${_abs}"
                 COMMENT "Compiling x86: ${_target}_src${_src_idx}"
             )
@@ -1667,6 +1698,9 @@ function(um_exe_mfc_x86 _target)
 
     add_custom_target(${_target} ALL DEPENDS "${_output}")
 endfunction()
+
+# 自动引入 unity.cmake（collect_sources / generate_unity）
+include("${CMAKE_CURRENT_LIST_DIR}/unity.cmake" OPTIONAL)
 `)
 
 	return os.WriteFile(outputPath, []byte(b.String()), 0644)
