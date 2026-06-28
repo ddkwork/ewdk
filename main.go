@@ -441,7 +441,7 @@ func scanQtStaticDir(qtBaseDir string) qtStaticInfo {
 		info.LinkLibs = append(info.LinkLibs, plib)
 	}
 	winLibs := []string{
-		"icu.lib", "icuin.lib", "icuuc.lib",
+		"icuuc.lib", "icuin.lib",
 		"advapi32.lib", "shell32.lib", "ole32.lib", "oleaut32.lib", "uuid.lib",
 		"user32.lib", "gdi32.lib", "comdlg32.lib", "winspool.lib", "imm32.lib", "version.lib", "ws2_32.lib",
 		"dwmapi.lib", "d3d9.lib", "dwrite.lib", "dxgi.lib", "netapi32.lib", "opengl32.lib",
@@ -703,6 +703,7 @@ set(WDK_KM_EXTRA_LIBS bufferoverflowk.lib)
 endforeach()
 `)
 		b.WriteString("set(QT_LIB_DIR \"${QT_BASE_DIR}/lib\")\n")
+		b.WriteString("set(QT_PLUGIN_DIR \"${QT_BASE_DIR}/plugins\")\n")
 		b.WriteString(fmt.Sprintf("set(QT_MSVC_RUNTIME_LIBRARY \"%s\")\n", env.UM.MsvcRuntimeLibrary))
 		b.WriteString("\n# Qt Compile Definitions\n")
 		b.WriteString("set(QT_COMPILE_DEFINITIONS\n")
@@ -1019,7 +1020,7 @@ function(um_exe _target)
 
     string(TOUPPER "${WDK_SUBSYSTEM}" _subsystem_upper)
 
-    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
 
@@ -1070,7 +1071,7 @@ function(um_lib _target)
         add_library(${_target} ${WDK_UNPARSED_ARGUMENTS})
     endif()
 
-    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     if(WDK_NTDDI_VERSION)
@@ -1105,7 +1106,7 @@ function(um_dll _target)
     endif()
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL"
+        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_USRDLL;_WINDLL"
         )
 
     if(DEFINED QT_INCLUDE_DIRS AND NOT "${QT_INCLUDE_DIRS}" STREQUAL "")
@@ -1169,7 +1170,7 @@ function(um_dp64 _target)
     endif()
     set_target_properties(${_target} PROPERTIES SUFFIX ".dp64")
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL;_WINDOWS"
+        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_USRDLL;_WINDLL;_WINDOWS"
     )
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
@@ -1258,7 +1259,7 @@ function(um_dp86 _target)
         list(APPEND _inc_flags "/I\"${_d}\"")
     endforeach()
 
-    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL")
+    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL" "/DUNICODE" "/D_UNICODE")
     foreach(_def ${WDK_DEFINES})
         list(APPEND _def_flags "/D${_def}")
     endforeach()
@@ -1372,6 +1373,335 @@ function(um_dp86 _target)
     endif()
 endfunction()
 
+# ---- Qt-Specific Functions (强制 Release /MT，适配 Qt6 静态库) ----
+# um_qt_exe(target)   — Qt EXE x64，不管外部的 CMAKE_BUILD_TYPE 都强制 /MT
+# um_qt_dll(target)   — Qt DLL x64，不管外部的 CMAKE_BUILD_TYPE 都强制 /MT
+# um_qt_exe_x86(target) — Qt EXE x86，强制 /MT
+# um_qt_dll_x86(target) — Qt DLL x86，强制 /MT
+
+function(um_qt_exe _target)
+    cmake_parse_arguments(WDK "NOAUTO" "SUBSYSTEM;WINVER;NTDDI_VERSION" "SOURCES;INCLUDES;DEFINES;LIBS;COMPILE_OPTIONS" ${ARGN})
+
+    if(NOT WDK_SUBSYSTEM)
+        set(WDK_SUBSYSTEM "CONSOLE")
+    endif()
+
+    if(WDK_SOURCES)
+        add_executable(${_target} ${WDK_SOURCES})
+    else()
+        add_executable(${_target} ${WDK_UNPARSED_ARGUMENTS})
+    endif()
+
+    string(TOUPPER "${WDK_SUBSYSTEM}" _subsystem_upper)
+
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
+    # Qt 静态库只有 Release 版，强制 /MT 不管外部 CMAKE_BUILD_TYPE
+    set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
+    cmake_policy(SET CMP0117 NEW)
+    set_target_properties(${_target} PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
+    target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
+    target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
+    target_link_libraries(${_target} ${QT_LINK_LIBRARIES})
+
+    if(WDK_NTDDI_VERSION)
+        target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
+    endif()
+    if(WDK_DEFINES)
+        target_compile_definitions(${_target} PRIVATE ${WDK_DEFINES})
+    endif()
+    if(WDK_COMPILE_OPTIONS)
+        target_compile_options(${_target} PRIVATE ${WDK_COMPILE_OPTIONS})
+    endif()
+
+    target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS})
+    if(WDK_INCLUDES)
+        target_include_directories(${_target} PRIVATE ${WDK_INCLUDES})
+    endif()
+
+    if(WDK_NOAUTO)
+        if(WDK_LIBS)
+            target_link_libraries(${_target} ${WDK_LIBS})
+        endif()
+    else()
+        target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS})
+        if(WDK_LIBS)
+            target_link_libraries(${_target} ${WDK_LIBS})
+        endif()
+    endif()
+
+    foreach(_lib_dir ${WDK_UM_LIB_DIRS})
+        target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
+    endforeach()
+
+    if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
+        set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    elseif(_subsystem_upper STREQUAL "WINDOWS" OR _subsystem_upper STREQUAL "WIN")
+        set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
+    endif()
+endfunction()
+
+function(um_qt_dll _target)
+    cmake_parse_arguments(WDK "" "WINVER;NTDDI_VERSION" "SOURCES;INCLUDES;DEFINES;LIBS;COMPILE_OPTIONS" ${ARGN})
+
+    if(WDK_SOURCES)
+        add_library(${_target} SHARED ${WDK_SOURCES})
+    else()
+        add_library(${_target} SHARED ${WDK_UNPARSED_ARGUMENTS})
+    endif()
+
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
+        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_USRDLL;_WINDLL"
+    )
+    # Qt 静态库只有 Release 版，强制 /MT
+    set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
+    cmake_policy(SET CMP0117 NEW)
+    set_target_properties(${_target} PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
+    target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
+    target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
+    target_link_libraries(${_target} ${QT_LINK_LIBRARIES})
+
+    if(WDK_NTDDI_VERSION)
+        target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
+    endif()
+    if(WDK_DEFINES)
+        target_compile_definitions(${_target} PRIVATE ${WDK_DEFINES})
+    endif()
+    if(WDK_COMPILE_OPTIONS)
+        target_compile_options(${_target} PRIVATE ${WDK_COMPILE_OPTIONS})
+    endif()
+
+    target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS})
+    if(WDK_INCLUDES)
+        target_include_directories(${_target} PRIVATE ${WDK_INCLUDES})
+    endif()
+    target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS})
+    if(WDK_LIBS)
+        target_link_libraries(${_target} ${WDK_LIBS})
+    endif()
+    foreach(_lib_dir ${WDK_UM_LIB_DIRS})
+        target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
+    endforeach()
+endfunction()
+
+function(um_qt_exe_x86 _target)
+    cmake_parse_arguments(WDK "" "SUBSYSTEM;WINVER;NTDDI_VERSION" "SOURCES;INCLUDE_DIRS;LINK_DIRS;LINK_LIBS;DEFINITIONS" ${ARGN})
+
+    if(NOT WDK_SUBSYSTEM)
+        set(WDK_SUBSYSTEM "CONSOLE")
+    endif()
+    string(TOUPPER "${WDK_SUBSYSTEM}" _subsystem_upper)
+
+    if(CMAKE_C_COMPILER STREQUAL X86_CL)
+        # Native mode — Qt 目标强制 /MT
+        add_executable(${_target} ${WDK_SOURCES})
+        set_target_properties(${_target} PROPERTIES
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS${WDK_DEFINITIONS}"
+            MSVC_RUNTIME_LIBRARY "MultiThreaded"
+        )
+        if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
+            set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE /MACHINE:X86")
+        else()
+            set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /MACHINE:X86")
+        endif()
+        target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
+        target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+        target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
+        target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+        foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
+            target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
+        endforeach()
+        target_link_libraries(${_target} ${QT_LINK_LIBRARIES})
+        target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS})
+    else()
+        # Custom command mode — Qt 目标强制 /MT
+        set(_output "${CMAKE_CURRENT_BINARY_DIR}/${_target}.exe")
+        set(_obj_dir "${CMAKE_CURRENT_BINARY_DIR}/${_target}_objs")
+        file(MAKE_DIRECTORY "${_obj_dir}")
+
+        set(_CRT "/MT")
+        set(_OPT "/O2" "/Ob2" "/DNDEBUG")
+
+        set(_inc_flags)
+        foreach(_d ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
+            list(APPEND _inc_flags "/I\"${_d}\"")
+        endforeach()
+        foreach(_d ${QT_INCLUDE_DIRS})
+            list(APPEND _inc_flags "/I\"${_d}\"")
+        endforeach()
+        list(APPEND _inc_flags "/I\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/DUNICODE" "/D_UNICODE")
+        foreach(_def ${WDK_DEFINITIONS})
+            list(APPEND _def_flags "/D${_def}")
+        endforeach()
+        foreach(_def ${QT_COMPILE_DEFINITIONS})
+            list(APPEND _def_flags "/D${_def}")
+        endforeach()
+
+        set(_libpaths)
+        foreach(_d ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
+            list(APPEND _libpaths "/LIBPATH:\"${_d}\"")
+        endforeach()
+
+        if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
+            set(_subsys "/SUBSYSTEM:CONSOLE")
+        else()
+            set(_subsys "/SUBSYSTEM:WINDOWS")
+        endif()
+
+        set(_link_libs ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS} ${QT_LINK_LIBRARIES})
+
+        set(_all_objs "")
+        set(_src_idx 0)
+
+        foreach(_src ${WDK_SOURCES})
+            get_filename_component(_abs "${_src}" ABSOLUTE)
+            get_filename_component(_ext "${_src}" EXT)
+            set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
+            list(APPEND _all_objs "${_obj}")
+            if(_ext STREQUAL ".asm")
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                    DEPENDS "${_abs}"
+                    COMMENT "Assembling x86 Qt: ${_target}_src${_src_idx}"
+                )
+            else()
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    DEPENDS "${_abs}"
+                    COMMENT "Compiling x86 Qt: ${_target}_src${_src_idx}"
+                )
+            endif()
+            math(EXPR _src_idx "${_src_idx} + 1")
+        endforeach()
+
+        add_custom_command(
+            OUTPUT "${_output}"
+            COMMAND "${X86_LINK}" /nologo /OUT:"${_output}" ${_all_objs} ${_subsys} /MACHINE:X86 ${_libpaths} ${_link_libs}
+            DEPENDS ${_all_objs}
+            COMMENT "Linking x86 Qt: ${_target}.exe"
+        )
+
+        add_custom_target(${_target} ALL DEPENDS "${_output}")
+    endif()
+endfunction()
+
+function(um_qt_dll_x86 _target)
+    cmake_parse_arguments(WDK "" "SUFFIX" "SOURCES;INCLUDE_DIRS;LINK_DIRS;LINK_LIBS;DEFINITIONS" ${ARGN})
+
+    if(NOT WDK_SUFFIX)
+        set(WDK_SUFFIX ".dll")
+    endif()
+
+    if(CMAKE_C_COMPILER STREQUAL X86_CL)
+        # Native mode — Qt 目标强制 /MT
+        add_library(${_target} SHARED ${WDK_SOURCES})
+        set_target_properties(${_target} PROPERTIES
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
+            MSVC_RUNTIME_LIBRARY "MultiThreaded"
+            SUFFIX "${WDK_SUFFIX}"
+        )
+        set_target_properties(${_target} PROPERTIES LINK_FLAGS "/MACHINE:X86")
+        target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
+        target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+        target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
+        target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+        foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
+            target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
+        endforeach()
+        target_link_libraries(${_target} ${QT_LINK_LIBRARIES})
+        target_link_libraries(${_target} ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS})
+        target_link_options(${_target} PRIVATE "/DEF:${_def_file}")
+    else()
+        # Custom command mode — Qt 目标强制 /MT
+        set(_output "${CMAKE_CURRENT_BINARY_DIR}/${_target}${WDK_SUFFIX}")
+        set(_obj_dir "${CMAKE_CURRENT_BINARY_DIR}/${_target}_objs")
+        file(MAKE_DIRECTORY "${_obj_dir}")
+
+        set(_CRT "/MT")
+        set(_OPT "/O2" "/Ob2" "/DNDEBUG")
+
+        set(_inc_flags)
+        foreach(_d ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
+            list(APPEND _inc_flags "/I\"${_d}\"")
+        endforeach()
+        foreach(_d ${QT_INCLUDE_DIRS})
+            list(APPEND _inc_flags "/I\"${_d}\"")
+        endforeach()
+        list(APPEND _inc_flags "/I\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL" "/DUNICODE" "/D_UNICODE")
+        foreach(_def ${WDK_DEFINITIONS})
+            list(APPEND _def_flags "/D${_def}")
+        endforeach()
+        foreach(_def ${QT_COMPILE_DEFINITIONS})
+            list(APPEND _def_flags "/D${_def}")
+        endforeach()
+
+        set(_libpaths)
+        foreach(_d ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
+            list(APPEND _libpaths "/LIBPATH:\"${_d}\"")
+        endforeach()
+
+        set(_link_libs ${WDK_UM_SDK_LIBS} ${WDK_UM_EXTRA_LIBS} ${WDK_LINK_LIBS} ${QT_LINK_LIBRARIES})
+
+        set(_all_objs "")
+        set(_src_idx 0)
+
+        foreach(_src ${WDK_SOURCES})
+            get_filename_component(_abs "${_src}" ABSOLUTE)
+            get_filename_component(_ext "${_src}" EXT)
+            set(_obj "${_obj_dir}/${_target}_src${_src_idx}.obj")
+            list(APPEND _all_objs "${_obj}")
+            if(_ext STREQUAL ".asm")
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_ML}" /nologo /c /Fo"${_obj}" "${_abs}"
+                    DEPENDS "${_abs}"
+                    COMMENT "Assembling x86 Qt DLL: ${_target}_src${_src_idx}"
+                )
+            else()
+                add_custom_command(
+                    OUTPUT "${_obj}"
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    DEPENDS "${_abs}"
+                    COMMENT "Compiling x86 Qt DLL: ${_target}_src${_src_idx}"
+                )
+            endif()
+            math(EXPR _src_idx "${_src_idx} + 1")
+        endforeach()
+
+        add_custom_command(
+            OUTPUT "${_output}"
+            COMMAND "${X86_LINK}" /nologo /DLL /OUT:"${_output}" ${_all_objs} ${_subsys} /MACHINE:X86 ${_libpaths} ${_link_libs}
+            DEPENDS ${_all_objs}
+            COMMENT "Linking x86 Qt DLL: ${_target}${WDK_SUFFIX}"
+        )
+
+        add_custom_target(${_target} ALL DEPENDS "${_output}")
+    endif()
+endfunction()
+
 # ---- x86 Functions ----
 
 function(um_exe_x86 _target)
@@ -1386,7 +1716,7 @@ function(um_exe_x86 _target)
         # Native mode
         add_executable(${_target} ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
         if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
@@ -1419,7 +1749,7 @@ function(um_exe_x86 _target)
             list(APPEND _inc_flags "/I\"${_d}\"")
         endforeach()
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/DUNICODE" "/D_UNICODE")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1487,7 +1817,7 @@ function(um_dll_x86 _target)
         add_library(${_target} SHARED ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
             SUFFIX "${WDK_SUFFIX}"
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
             LINK_FLAGS "/MACHINE:X86"
         )
@@ -1517,7 +1847,7 @@ function(um_dll_x86 _target)
             list(APPEND _inc_flags "/I\"${_d}\"")
         endforeach()
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL" "/DUNICODE" "/D_UNICODE")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1594,7 +1924,7 @@ function(um_lib_x86 _target)
         # Native mode
         add_library(${_target} STATIC ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
@@ -1621,7 +1951,7 @@ function(um_lib_x86 _target)
             list(APPEND _inc_flags "/I\"${_d}\"")
         endforeach()
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/DUNICODE" "/D_UNICODE")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1676,7 +2006,7 @@ function(um_exe_mfc _target)
 
     target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};_AFX_STATIC${WDK_DEFINITIONS}")
+        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_AFX_STATIC${WDK_DEFINITIONS}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     target_include_directories(${_target} PRIVATE
@@ -1720,7 +2050,7 @@ function(um_exe_mfc_x86 _target)
         list(APPEND _inc_flags "/I\"${_d}\"")
     endforeach()
 
-    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_AFX_STATIC")
+    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_AFX_STATIC" "/DUNICODE" "/D_UNICODE")
     foreach(_def ${WDK_DEFINITIONS})
         list(APPEND _def_flags "/D${_def}")
     endforeach()
