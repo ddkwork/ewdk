@@ -21,7 +21,7 @@ jobs:
       - name: 安装依赖
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq p7zip-full
+          sudo apt-get install -y -qq genisoimage
 
       - name: 下载 EWDK ISO
         run: |
@@ -30,32 +30,81 @@ jobs:
           curl -sL -o /tmp/ewdk.iso "$URL"
           ls -lh /tmp/ewdk.iso
 
-      - name: 解压 ISO
+      - name: 挂载 ISO
         run: |
-          mkdir -p /tmp/iso
-          7z x /tmp/ewdk.iso -o/tmp/iso -y > /dev/null
-          ls /tmp/iso/
+          sudo mkdir -p /mnt/iso
+          sudo mount -o loop /tmp/ewdk.iso /mnt/iso
+          ls /mnt/iso/
 
       - name: 精简 EWDK
         run: |
-          python3 slim-ewdk.py /tmp/iso ewdk-slim
+          python3 slim-ewdk.py /mnt/iso ewdk-slim
 
-      - name: 打包为 7z
+      - name: 卸载 ISO
         run: |
-          cd ewdk-slim
-          7z a -mx9 -mmt ../ewdk-slim.7z .
-          cd ..
-          ls -lh ewdk-slim.7z
+          sudo umount /mnt/iso
 
-      - name: 上传 Artifact
+      - name: 打包为 ISO
+        run: |
+          LABEL=$(blkid -o value -s LABEL /tmp/ewdk.iso 2>/dev/null || echo "EWDK")
+          genisoimage -o ewdk-slim.iso -r -J -V "$LABEL" -input-charset utf-8 ewdk-slim/
+          ls -lh ewdk-slim.iso
+
+      - name: 上传 Artifact (ISO)
         uses: actions/upload-artifact@v4
         with:
-          name: ewdk-slim
-          path: ewdk-slim/
+          name: ewdk-slim-iso
+          path: ewdk-slim.iso
           retention-days: 7
 
-      - name: 上传 Release Asset
-        if: github.event_name == 'release'
+  release:
+    needs: slim
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载精简后的 ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: ewdk-slim-iso
+
+      - name: 删除旧的 slim-ewdk release
+        uses: dev-drprasad/delete-older-releases@v0.3.4
+        with:
+          keep_latest: 0
+          delete_tag_pattern: slim-ewdk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 创建本地 tag
+        run: |
+          git tag -f slim-ewdk
+
+      - name: 推送 tag
+        run: |
+          git push origin slim-ewdk --force
+
+      - name: 获取 commit 信息
+        id: commit_info
+        run: |
+          echo "commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: 创建 Release 并上传 ISO
         uses: softprops/action-gh-release@v2
         with:
-          files: ewdk-slim.7z
+          token: ${{ secrets.tk }}
+          tag_name: slim-ewdk
+          files: ewdk-slim.iso
+          body: |
+            Slim EWDK ISO - CI Release
+
+            Build Date: ${{ steps.commit_info.outputs.date }}
+            Commit: ${{ steps.commit_info.outputs.commit }}
+            Branch: ${{ github.ref_name }}
+          draft: false
+          prerelease: true
+          overwrite_files: true
