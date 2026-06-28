@@ -154,23 +154,93 @@ func resolveISOPath() string {
 const testSignCertName = "WDKTestCert"
 
 func ensureTestCertificate() {
-	script := fmt.Sprintf(`$cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.Subject -match 'CN=%s' }; if ($cert) { Write-Host 'EXISTS' } else { Write-Host 'NOT_FOUND' }`, testSignCertName)
+	// Check if cert already exists in TrustedPublisher (the only store we keep)
+	script := fmt.Sprintf(
+		`$cert = Get-ChildItem Cert:\LocalMachine\TrustedPublisher | Where-Object { $_.Subject -match 'CN=%s' }; `+
+			`if ($cert) { Write-Host $cert.Thumbprint } else { Write-Host 'NOT_FOUND' }`,
+		testSignCertName)
 	output, err := exec.Command(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script).Output()
 	if err != nil {
 		fmt.Printf("  [WARN] check certificate: %v\n", err)
 		return
 	}
-	if strings.TrimSpace(string(output)) == "EXISTS" {
-		fmt.Printf("  [OK]   Test certificate '%s' already exists\n", testSignCertName)
+	thumbprint := strings.TrimSpace(string(output))
+	if thumbprint != "NOT_FOUND" && thumbprint != "" {
+		fmt.Printf("  [OK]   Test certificate already in TrustedPublisher (thumbprint: %s)\n", thumbprint)
+		removeCertFromAllOtherStores()
 		return
 	}
-	createScript := fmt.Sprintf(`New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=%s" -CertStoreLocation "Cert:\CurrentUser\My" | Out-Null; Write-Host 'CREATED'`, testSignCertName)
+
+	// Create cert in LocalMachine\My (New-SelfSignedCertificate only supports My store)
+	createScript := fmt.Sprintf(
+		`$cert = New-SelfSignedCertificate -Type CodeSigningCert `+
+			`-Subject "CN=%s" `+
+			`-CertStoreLocation "Cert:\LocalMachine\My"; `+
+			`Write-Host $cert.Thumbprint`,
+		testSignCertName)
 	out, err := exec.Command(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", createScript).CombinedOutput()
 	if err != nil {
 		fmt.Printf("  [WARN] create certificate: %v, output: %s\n", err, strings.TrimSpace(string(out)))
 		return
 	}
-	fmt.Printf("  [OK]   Created test certificate '%s'\n", testSignCertName)
+	thumbprint = strings.TrimSpace(string(out))
+	fmt.Printf("  [OK]   Created test certificate (thumbprint: %s)\n", thumbprint)
+
+	// Export .cer to ewdk bin dir
+	certDir := cmake.BinDir
+	cerPath := filepath.Join(certDir, testSignCertName+".cer")
+	exportScript := fmt.Sprintf(
+		`$cert = Get-ChildItem Cert:\LocalMachine\My\%s; `+
+			`Export-Certificate -Cert $cert -FilePath '%s' -Type CERT | Out-Null; `+
+			`Write-Host 'EXPORTED'`,
+		thumbprint, strings.ReplaceAll(cerPath, "'", "''"))
+	if out2, err2 := exec.Command(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", exportScript).CombinedOutput(); err2 != nil {
+		fmt.Printf("  [WARN] export certificate: %v, output: %s\n", err2, strings.TrimSpace(string(out2)))
+	} else {
+		fmt.Printf("  [OK]   Exported certificate to %s\n", cerPath)
+	}
+
+	// Install to TrustedPublisher
+	installScript := fmt.Sprintf(
+		`$cert = Get-ChildItem Cert:\LocalMachine\My\%s; `+
+			`$store = [System.Security.Cryptography.X509Certificates.X509Store]::new("TrustedPublisher", "LocalMachine"); `+
+			`$store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite); `+
+			`$store.Add($cert); `+
+			`$store.Close(); `+
+			`Write-Host 'INSTALLED'`,
+		thumbprint)
+	if out3, err3 := exec.Command(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", installScript).CombinedOutput(); err3 != nil {
+		fmt.Printf("  [WARN] install to TrustedPublisher: %v, output: %s\n", err3, strings.TrimSpace(string(out3)))
+	} else {
+		fmt.Printf("  [OK]   Installed to LocalMachine\\TrustedPublisher\n", testSignCertName)
+	}
+
+	// Remove from My — signtool reads from TrustedPublisher via /sm /s TrustedPublisher
+	removeCertFromLocalMachineMy(thumbprint)
+	removeCertFromAllOtherStores()
+}
+
+func removeCertFromLocalMachineMy(thumbprint string) {
+	removeFromStore := fmt.Sprintf(
+		`try { `+
+			`$s = [System.Security.Cryptography.X509Certificates.X509Store]::new("My","LocalMachine"); `+
+			`$s.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite); `+
+			`$c = $s.Certificates | Where-Object { $_.Thumbprint -eq '%s' }; `+
+			`if ($c) { $s.Remove($c); Write-Host 'Removed from LocalMachine\My' } else { Write-Host 'Not in LocalMachine\My' }; `+
+			`$s.Close() } catch { Write-Host 'skip' }`,
+		thumbprint)
+	exec.Command(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", removeFromStore).Run()
+}
+
+func removeCertFromAllOtherStores() {
+	// Clean CurrentUser\My, LocalMachine\Root, LocalMachine\My (any stale copies)
+	stores := []string{
+		`$s = [System.Security.Cryptography.X509Certificates.X509Store]::new("My","CurrentUser"); $s.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite); $s.Certificates | Where-Object { $_.Subject -match 'CN=WDKTestCert' } | ForEach-Object { $s.Remove($_); Write-Host "Removed from CurrentUser\My: $($_.Thumbprint)" }; $s.Close()`,
+		`$s = [System.Security.Cryptography.X509Certificates.X509Store]::new("Root","LocalMachine"); $s.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite); $s.Certificates | Where-Object { $_.Subject -match 'CN=WDKTestCert' } | ForEach-Object { $s.Remove($_); Write-Host "Removed from LocalMachine\Root: $($_.Thumbprint)" }; $s.Close()`,
+	}
+	for _, s := range stores {
+		exec.Command(powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", s).Run()
+	}
 }
 
 func generateUnityCmake(outputPath string) error {
@@ -877,7 +947,7 @@ function(km_sys _target)
 
     if(KM_TEST_SIGN AND DEFINED KM_SIGNTOOL_PATH)
         add_custom_command(TARGET ${_target} POST_BUILD
-            COMMAND ${KM_SIGNTOOL_PATH} sign /fd SHA256 /s My /n ${KM_TEST_SIGN_NAME} /t http://timestamp.digicert.com $<TARGET_FILE:${_target}>
+            COMMAND ${KM_SIGNTOOL_PATH} sign /fd SHA256 /sm /s TrustedPublisher /n ${KM_TEST_SIGN_NAME} $<TARGET_FILE:${_target}>
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             COMMENT "Signing driver with test certificate: ${KM_TEST_SIGN_NAME}"
             VERBATIM
