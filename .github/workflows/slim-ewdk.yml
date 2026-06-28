@@ -7,7 +7,7 @@ on:
       iso_url:
         description: 'EWDK ISO 下载链接 (来自 https://go.microsoft.com/fwlink/?linkid=2315288)'
         required: true
-        default: 'https://go.microsoft.com/fwlink/?linkid=2315288'
+        default: 'https://go.microsoft.com/fwlink/?LinkId=2362109'
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
 
       - name: 下载 EWDK ISO
         run: |
-          URL="${{ github.event.inputs.iso_url || 'https://go.microsoft.com/fwlink/?linkid=2315288' }}"
+          URL="${{ github.event.inputs.iso_url || 'https://go.microsoft.com/fwlink/?LinkId=2362109' }}"
           echo "下载中: $URL"
           curl -sL -o /tmp/ewdk.iso "$URL"
           ls -lh /tmp/ewdk.iso
