@@ -16,29 +16,35 @@ description: "Analyzes Windows kernel crash dumps (.dmp) with kd.exe and PDB sym
 
 ## 当前项目快捷配置
 
-对于当前正在开发的项目（CheatVmm），默认 PDB/SYS 路径已在下方。
-如果是其他项目，用户会额外说明 PDB 路径。
+对于当前正在开发的项目，默认 PDB 和源代码路径已在下方列出。
+如果是其他项目，用户会额外说明路径。
 
 | 项目 | 路径 |
 |------|------|
-| 项目根 | `d:\ux\examples\ewdk\tt\vt\good\vt-debuger-main\` |
-| .sys 输出 | `d:\ux\examples\ewdk\tt\vt\good\vt-debuger-main\Debug\src\hvppdrv\CheatVmm.sys` |
-| .pdb 符号 | `d:\ux\examples\ewdk\tt\vt\good\vt-debuger-main\Debug\src\hvppdrv\CheatVmm.pdb` |
+| 项目根（CMake 顶层目录） | `d:\ux\examples\ewdk\tt\vt\good\vt-debuger-main\` |
+| .sys 输出 | `<项目根>\Debug\src\hvppdrv\CheatVmm.sys` |
+| .pdb 符号  | `<项目根>\Debug\src\hvppdrv\CheatVmm.pdb` |
 
-## 标准命令
+## 标准分析命令
 
-分析时 `-y` 符号路径需要同时包含**系统符号**和**当前项目 PDB 目录**：
+分析时三要素：**符号路径（PDB）** + **源代码路径** + **dump 文件**。
 
 ```powershell
-& "C:\Program Files\WindowsApps\Microsoft.WinDbg_1.2603.20001.0_x64__8wekyb3d8bbwe\amd64\kd.exe" -z "C:\Windows\MEMORY.DMP" -y "C:\ProgramData\Dbg\sym;d:\ux\examples\ewdk\tt\vt\good\vt-debuger-main\Debug\src\hvppdrv" -c "!analyze -v;q"
+$env:_NT_SOURCE_PATH = "<项目根>"
+& "C:\Program Files\WindowsApps\Microsoft.WinDbg_1.2603.20001.0_x64__8wekyb3d8bbwe\amd64\kd.exe" -z "C:\Windows\MEMORY.DMP" -y "C:\ProgramData\Dbg\sym;<项目根>\Debug\src\hvppdrv" -c ".lines;!analyze -v;q"
 ```
+
+`_NT_SOURCE_PATH` 环境变量让 kd 能根据 PDB 中记录的相对路径找到 `.cpp`/`.h` 源代码文件，
+这样 `!analyze -v` 就能直接输出 `FAULTING_SOURCE_LINE` 对应的代码上下文，
+`uf` 反汇编时也能 inline 显示源码行。
 
 ## 分析步骤
 
 ### 1. 加载 dump 获取初步信息
 
 ```powershell
-& "C:\Program Files\WindowsApps\Microsoft.WinDbg_1.2603.20001.0_x64__8wekyb3d8bbwe\amd64\kd.exe" -z "C:\Windows\MEMORY.DMP" -y "C:\ProgramData\Dbg\sym;<project_pdb_dir>" -c "!analyze -v;q"
+$env:_NT_SOURCE_PATH = "<项目根>"
+& "C:\Program Files\WindowsApps\Microsoft.WinDbg_1.2603.20001.0_x64__8wekyb3d8bbwe\amd64\kd.exe" -z "C:\Windows\MEMORY.DMP" -y "C:\ProgramData\Dbg\sym;<项目根>\Debug\src\hvppdrv" -c ".lines;!analyze -v;q"
 ```
 
 ### 2. 提取关键信息
@@ -47,7 +53,7 @@ description: "Analyzes Windows kernel crash dumps (.dmp) with kd.exe and PDB sym
 - **BUGCHECK_CODE** — 如 `0x7E`, `0xD1`, `0x3B`, `0x101`
 - **IMAGE_NAME** — 哪个模块崩溃
 - **STACK_TEXT** — 完整调用栈
-- **FAULTING_SOURCE_LINE** — 源码位置（需 PDB 匹配）
+- **FAULTING_SOURCE_LINE** — 源码位置（需 PDB + 源码路径配合）
 - **FAILURE_BUCKET_ID** — 微软错误桶
 
 ### 3. 深度分析
@@ -55,11 +61,14 @@ description: "Analyzes Windows kernel crash dumps (.dmp) with kd.exe and PDB sym
 根据栈回溯，用反汇编定位精确崩溃点：
 
 ```powershell
-# 反汇编关键函数
+# 反汇编关键函数（_NT_SOURCE_PATH 已设时自动显示源码行）
 uf <module>!<function>
 
 # 查看完整栈
 knL
+
+# 查看特定栈帧的源码上下文
+.lines; .srcpath
 ```
 
 如果 PDB 路径正确但无法加载镜像，用 `.reload /f <module>` 强制加载符号。
