@@ -892,24 +892,39 @@ function(km_sys _target)
         )
 
     # Generate CRT stub for kernel-mode ucrt symbols
+    # FIX: Replace _vsnprintf with RtlStringCbVPrintfA to avoid infinite recursion.
+    # The default stubs call _vsnprintf -> _vsnprintf_l -> __stdio_common_vsprintf -> _vsnprintf (cycle).
     set(_km_crt_stub "${CMAKE_CURRENT_BINARY_DIR}/km_crt_stubs.c")
     file(WRITE ${_km_crt_stub}
-    "#include <crtdefs.h>
-    #include <stdio.h>
+    "#include <ntddk.h>
+    #include <ntstrsafe.h>
+
+    static int __stdio_common_vsprintf_impl(char* _Buffer, size_t _BufferCount, const char* _Format, char* _ArgList)
+    {
+        NTSTATUS Status;
+        Status = RtlStringCbVPrintfA(_Buffer, _BufferCount, _Format, (va_list)_ArgList);
+        if (NT_SUCCESS(Status))
+            return (int)(_BufferCount > 0 ? strnlen(_Buffer, _BufferCount) : 0);
+        return -1;
+    }
+
     int __cdecl __stdio_common_vsprintf_s(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, const char* _Format, _locale_t _Locale, char* _ArgList)
     {
         (void)_Options; (void)_Locale;
-        return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
+        return __stdio_common_vsprintf_impl(_Buffer, _BufferCount, _Format, _ArgList);
     }
+
     int __cdecl __stdio_common_vsprintf(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, const char* _Format, _locale_t _Locale, char* _ArgList)
     {
         (void)_Options; (void)_Locale;
-        return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
+        return __stdio_common_vsprintf_impl(_Buffer, _BufferCount, _Format, _ArgList);
     }
+
     int __cdecl __stdio_common_vsnprintf_s(unsigned __int64 _Options, char* _Buffer, size_t _BufferCount, size_t _MaxCount, const char* _Format, _locale_t _Locale, char* _ArgList)
     {
         (void)_Options; (void)_Locale; (void)_MaxCount;
-        return _vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
+        size_t cbDest = (_BufferCount < _MaxCount) ? _BufferCount : _MaxCount;
+        return __stdio_common_vsprintf_impl(_Buffer, cbDest, _Format, _ArgList);
     }
     ")
     target_sources(${_target} PRIVATE ${_km_crt_stub})
