@@ -1,0 +1,1 @@
+python slim-ewdk.py e:/ ewdk-slim
