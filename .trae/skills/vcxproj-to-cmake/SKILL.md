@@ -154,27 +154,19 @@ go build -v .
 
 ### 验证
 
-在目标项目目录执行构建验证新模板生效：
-
-```cmd
-(cmake -B Release -G "Ninja" -DCMAKE_BUILD_TYPE=Release . && cmake --build Release --config Release) 2>&1 | powershell -NoProfile -Command "$input | Tee-Object -FilePath build.Release.log"
-(cmake -B Debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug . && cmake --build Debug --config Debug) 2>&1 | powershell -NoProfile -Command "$input | Tee-Object -FilePath build.Debug.log"
-```
-
-## 生成 build.cmd
-
-生成 CMakeLists.txt 后，在**同一目录**创建 `build.cmd`，内容就是上面的验证命令，这样用户一键即可构建 Release + Debug 并记录日志。
+执行 `build.cmd` 验证新模板生效。
 
 ## 生成辅助文件
 
-生成 CMakeLists.txt 和 build.cmd 后，根据项目类型在**同一目录**生成以下辅助文件。
+生成 CMakeLists.txt 后，根据项目类型在**同一目录**生成以下辅助文件。
 
 ### 通用辅助文件（所有项目类型）
 
-以下三个文件在每个项目中都生成，内容直接从技能**自身目录**复制（它们与 `SKILL.md` 在同一目录，永久有效）：
+以下四个文件在每个项目中都生成，内容直接从技能**自身目录**复制（它们与 `SKILL.md` 在同一目录，永久有效）：
 
 | 文件 | 用途 |
 |------|------|
+| `build.cmd` | 一键构建 Debug + Release 并记录日志 |
 | `.clang-format` | 代码格式化配置（Google 风格缩进 4，列宽 120） |
 | `format_all.cmd` | 一键格式化所有 C/C++ 源文件 |
 | `convert_encoding.py` | GBK→UTF-8 无 BOM 编码转换 |

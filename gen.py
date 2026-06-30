@@ -24,9 +24,10 @@ def main():
 
     for d in entries:
         name = d.name
-        content = BUILD_CMD_RELEASE
-        if name not in RELEASE_ONLY:
-            content += BUILD_CMD_DEBUG
+        if name in RELEASE_ONLY:
+            content = BUILD_CMD_RELEASE
+        else:
+            content = BUILD_CMD_DEBUG + BUILD_CMD_RELEASE
 
         (d / "build.cmd").write_text(content, encoding="utf-8")
         print(f"[OK]   {name} build.cmd")
