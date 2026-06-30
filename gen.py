@@ -5,12 +5,11 @@ from pathlib import Path
 DEMO_DIR = Path(__file__).resolve().parent / "demo"
 RELEASE_ONLY = {"qt6", "x64dbg"}
 
-BUILD_CMD_RELEASE = """(cmake -B Release -G "Ninja" -DCMAKE_BUILD_TYPE=Release . && cmake --build Release --config Release) 2>&1 | powershell -NoProfile -Command "$input | Tee-Object -FilePath build.Release.log"
-"""
-
 BUILD_CMD_DEBUG = """(cmake -B Debug -G "Ninja" -DCMAKE_BUILD_TYPE=Debug . && cmake --build Debug --config Debug) 2>&1 | powershell -NoProfile -Command "$input | Tee-Object -FilePath build.Debug.log"
 """
 
+BUILD_CMD_RELEASE = """(cmake -B Release -G "Ninja" -DCMAKE_BUILD_TYPE=Release . && cmake --build Release --config Release) 2>&1 | powershell -NoProfile -Command "$input | Tee-Object -FilePath build.Release.log"
+"""
 
 def main():
     if not DEMO_DIR.is_dir():
