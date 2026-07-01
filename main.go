@@ -1006,7 +1006,7 @@ function(um_exe _target)
 
     string(TOUPPER "${WDK_SUBSYSTEM}" _subsystem_upper)
 
-    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
 
@@ -1057,7 +1057,7 @@ function(um_lib _target)
         add_library(${_target} ${WDK_UNPARSED_ARGUMENTS})
     endif()
 
-    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     if(WDK_NTDDI_VERSION)
@@ -1092,7 +1092,7 @@ function(um_dll _target)
     endif()
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_USRDLL;_WINDLL"
+        "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL"
         )
 
     if(DEFINED QT_INCLUDE_DIRS AND NOT "${QT_INCLUDE_DIRS}" STREQUAL "")
@@ -1156,7 +1156,7 @@ function(um_dp64 _target)
     endif()
     set_target_properties(${_target} PROPERTIES SUFFIX ".dp64")
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_USRDLL;_WINDLL;_WINDOWS"
+        "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL;_WINDOWS"
     )
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
@@ -1245,7 +1245,7 @@ function(um_dp86 _target)
         list(APPEND _inc_flags "/I\"${_d}\"")
     endforeach()
 
-    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL" "/DUNICODE" "/D_UNICODE")
+    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL")
     foreach(_def ${WDK_DEFINES})
         list(APPEND _def_flags "/D${_def}")
     endforeach()
@@ -1380,7 +1380,7 @@ function(um_qt_exe _target)
 
     string(TOUPPER "${WDK_SUBSYSTEM}" _subsystem_upper)
 
-    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
+    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER}")
     # Qt 静态库只有 Release 版，强制 /MT 不管外部 CMAKE_BUILD_TYPE
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
@@ -1444,7 +1444,7 @@ function(um_qt_dll _target)
     endif()
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_USRDLL;_WINDLL"
+        "_WIN32_WINNT=${WDK_WINVER};_USRDLL;_WINDLL"
     )
     # Qt 静态库只有 Release 版，强制 /MT
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
@@ -1497,7 +1497,7 @@ function(um_qt_exe_x86 _target)
         # Native mode — Qt 目标强制 /MT
         add_executable(${_target} ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded"
         )
         if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
@@ -1533,7 +1533,7 @@ function(um_qt_exe_x86 _target)
         endforeach()
         list(APPEND _inc_flags "/I\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/DUNICODE" "/D_UNICODE")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1602,7 +1602,7 @@ function(um_qt_dll_x86 _target)
         # Native mode — Qt 目标强制 /MT
         add_library(${_target} SHARED ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded"
             SUFFIX "${WDK_SUFFIX}"
         )
@@ -1636,7 +1636,7 @@ function(um_qt_dll_x86 _target)
         endforeach()
         list(APPEND _inc_flags "/I\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL" "/DUNICODE" "/D_UNICODE")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1702,7 +1702,7 @@ function(um_exe_x86 _target)
         # Native mode
         add_executable(${_target} ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
         if(_subsystem_upper STREQUAL "CONSOLE" OR _subsystem_upper STREQUAL "WINCON")
@@ -1735,7 +1735,7 @@ function(um_exe_x86 _target)
             list(APPEND _inc_flags "/I\"${_d}\"")
         endforeach()
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/DUNICODE" "/D_UNICODE")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1803,7 +1803,7 @@ function(um_dll_x86 _target)
         add_library(${_target} SHARED ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
             SUFFIX "${WDK_SUFFIX}"
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS;_USRDLL;_WINDLL${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
             LINK_FLAGS "/MACHINE:X86"
         )
@@ -1833,7 +1833,7 @@ function(um_dll_x86 _target)
             list(APPEND _inc_flags "/I\"${_d}\"")
         endforeach()
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL" "/DUNICODE" "/D_UNICODE")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_USRDLL" "/D_WINDLL")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1910,7 +1910,7 @@ function(um_lib_x86 _target)
         # Native mode
         add_library(${_target} STATIC ${WDK_SOURCES})
         set_target_properties(${_target} PROPERTIES
-            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;DWIN32;_WINDOWS${WDK_DEFINITIONS}"
+            COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};DWIN32;_WINDOWS${WDK_DEFINITIONS}"
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
@@ -1937,7 +1937,7 @@ function(um_lib_x86 _target)
             list(APPEND _inc_flags "/I\"${_d}\"")
         endforeach()
 
-        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/DUNICODE" "/D_UNICODE")
+        set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS")
         foreach(_def ${WDK_DEFINITIONS})
             list(APPEND _def_flags "/D${_def}")
         endforeach()
@@ -1992,7 +1992,7 @@ function(um_exe_mfc _target)
 
     target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/EHsc /std:c++latest>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
-        "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_AFX_STATIC${WDK_DEFINITIONS}")
+        "_WIN32_WINNT=${WDK_WINVER};_AFX_STATIC${WDK_DEFINITIONS}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     target_include_directories(${_target} PRIVATE
@@ -2036,7 +2036,7 @@ function(um_exe_mfc_x86 _target)
         list(APPEND _inc_flags "/I\"${_d}\"")
     endforeach()
 
-    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_AFX_STATIC" "/DUNICODE" "/D_UNICODE")
+    set(_def_flags "/D_WIN32_WINNT=${WDK_WINVER}" "/DWIN32" "/D_WINDOWS" "/D_AFX_STATIC")
     foreach(_def ${WDK_DEFINITIONS})
         list(APPEND _def_flags "/D${_def}")
     endforeach()
