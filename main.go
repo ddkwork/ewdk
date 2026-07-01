@@ -776,7 +776,7 @@ set(KM_COMPILE_FLAGS
     "/Oi"
     )
 
-set(KM_COMPILE_DEFINITIONS "WINNT=1;_AMD64_;AMD64")
+set(KM_COMPILE_DEFINITIONS "WINNT=1;_AMD64_;AMD64;_msvc;_amd64")
 set(KM_COMPILE_DEFINITIONS_DEBUG "MSC_NOOPT;DEPRECATE_DDK_FUNCTIONS=1;DBG=1")
 
 string(CONCAT KM_LINK_FLAGS
@@ -862,7 +862,7 @@ function(km_sys _target)
     add_executable(${_target} ${WDK_UNPARSED_ARGUMENTS})
 
     set_target_properties(${_target} PROPERTIES SUFFIX ".sys")
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "${KM_COMPILE_DEFINITIONS};$<$<CONFIG:Debug>:${KM_COMPILE_DEFINITIONS_DEBUG}>;_WIN32_WINNT=${WDK_WINVER}"
         )
@@ -1008,7 +1008,7 @@ function(um_exe _target)
 
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
 
     if(WDK_NTDDI_VERSION)
         target_compile_definitions(${_target} PRIVATE NTDDI_VERSION=${WDK_NTDDI_VERSION})
@@ -1167,7 +1167,7 @@ function(um_dp64 _target)
         target_compile_definitions(${_target} PRIVATE ${WDK_DEFINES})
     endif()
 
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/EHsc /std:c++latest>)
     if(WDK_COMPILE_OPTIONS)
         target_compile_options(${_target} PRIVATE ${WDK_COMPILE_OPTIONS})
     endif()
@@ -1290,7 +1290,7 @@ function(um_dp86 _target)
     if(WDK_COMPILE_OPTIONS)
         list(APPEND _OPT ${WDK_COMPILE_OPTIONS})
     endif()
-    list(APPEND _OPT /utf-8 /EHsc /std:c++latest)
+    list(APPEND _OPT /utf-8)
 
     set(_all_objs)
     set(_src_idx 0)
@@ -1314,7 +1314,7 @@ function(um_dp86 _target)
         else()
             add_custom_command(
                 OUTPUT "${_obj}"
-                COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest
+                COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                 DEPENDS "${_abs}"
                 COMMENT "Compiling x86: ${_target}_src${_src_idx}"
             )
@@ -1509,7 +1509,7 @@ function(um_qt_exe_x86 _target)
         target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
         target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
         target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1572,7 +1572,7 @@ function(um_qt_exe_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86 Qt: ${_target}_src${_src_idx}"
                 )
@@ -1611,7 +1611,7 @@ function(um_qt_dll_x86 _target)
         target_include_directories(${_target} PRIVATE ${QT_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
         target_compile_definitions(${_target} PRIVATE ${QT_COMPILE_DEFINITIONS})
         target_compile_options(${_target} PRIVATE ${QT_COMPILE_OPTIONS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1669,7 +1669,7 @@ function(um_qt_dll_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86 Qt DLL: ${_target}_src${_src_idx}"
                 )
@@ -1711,7 +1711,7 @@ function(um_exe_x86 _target)
             set_target_properties(${_target} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /MACHINE:X86")
         endif()
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1772,7 +1772,7 @@ function(um_exe_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                     DEPENDS "${_abs}"
                     COMMENT "Assembling x86: ${_target}_src${_src_idx}"
                 )
@@ -1808,7 +1808,7 @@ function(um_dll_x86 _target)
             LINK_FLAGS "/MACHINE:X86"
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/EHsc /std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1867,7 +1867,7 @@ function(um_dll_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86: ${_target}_src${_src_idx}"
                 )
@@ -1914,7 +1914,7 @@ function(um_lib_x86 _target)
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
         target_include_directories(${_target} PRIVATE ${WDK_UM_INCLUDE_DIRS_X86} ${WDK_INCLUDE_DIRS})
-        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /std:c++latest>)
+        target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/std:c++latest>)
         foreach(_lib_dir ${WDK_UM_LIB_DIRS_X86} ${WDK_LINK_DIRS})
             target_link_options(${_target} PRIVATE "/LIBPATH:${_lib_dir}")
         endforeach()
@@ -1966,7 +1966,7 @@ function(um_lib_x86 _target)
             else()
                 add_custom_command(
                     OUTPUT "${_obj}"
-                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                    COMMAND "${X86_CL}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                     DEPENDS "${_abs}"
                     COMMENT "Compiling x86: ${_target}_src${_src_idx}"
                 )
@@ -1990,7 +1990,7 @@ function(um_exe_mfc _target)
 
     add_executable(${_target} ${WDK_SOURCES})
 
-    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8 /EHsc /std:c++latest>)
+    target_compile_options(${_target} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8> $<$<COMPILE_LANGUAGE:C>:/TC> $<$<COMPILE_LANGUAGE:CXX>:/EHsc /std:c++latest>)
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS
         "_WIN32_WINNT=${WDK_WINVER};UNICODE;_UNICODE;_AFX_STATIC${WDK_DEFINITIONS}")
     set_target_properties(${_target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -2067,7 +2067,7 @@ function(um_exe_mfc_x86 _target)
         else()
             add_custom_command(
                 OUTPUT "${_obj}"
-                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT} /std:c++latest /EHsc
+                COMMAND "${_cc}" /utf-8 /nologo /c "${_abs}" /Fo"${_obj}" ${_inc_flags} ${_def_flags} ${_CRT} ${_OPT}
                 DEPENDS "${_abs}"
                 COMMENT "Compiling x86: ${_target}_src${_src_idx}"
             )
